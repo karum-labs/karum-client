@@ -1,20 +1,20 @@
 # karum-client
 
-The **Flutter client** for [Karum](https://github.com/kaarum/karum-infra#readme) — the tenant-mix leasing agent. Flutter **web** is the judge-facing target, and the same screens run on desktop.
+The **Flutter client** for [Karum](https://github.com/karum-labs/karum-infra#readme) — the tenant-mix leasing agent. Flutter **web** is the judge-facing target, and the same screens run on desktop.
 
 Part of the five-repo Karum layout:
 
 | Repo | Role |
 | --- | --- |
-| [`karum-infra`](https://github.com/kaarum/karum-infra) | Shared protos, Docker Compose, Cloud Run manifests |
+| [`karum-infra`](https://github.com/karum-labs/karum-infra) | Shared protos, Docker Compose, Cloud Run manifests |
 | **`karum-client`** (this repo) | Flutter UI (web / desktop) |
-| [`karum-server`](https://github.com/kaarum/karum-server) | Go + Gin API gateway |
-| [`karum-service-taste`](https://github.com/kaarum/karum-service-taste) | Qloo integration, caching, taste scoring |
-| [`karum-service-ai`](https://github.com/kaarum/karum-service-ai) | Vertex AI, search grounding, pitch drafting |
+| [`karum-server`](https://github.com/karum-labs/karum-server) | Go + Gin API gateway |
+| [`karum-service-taste`](https://github.com/karum-labs/karum-service-taste) | Qloo integration, caching, taste scoring |
+| [`karum-service-ai`](https://github.com/karum-labs/karum-service-ai) | Vertex AI, search grounding, pitch drafting |
 
 ## Run path
 
-Requires the **Flutter SDK** (see the version pin in [`karum-infra`](https://github.com/kaarum/karum-infra)).
+Requires the **Flutter SDK** (see the version pin in [`karum-infra`](https://github.com/karum-labs/karum-infra)).
 
 The gateway base URL is supplied with `--dart-define`, so pointing the app at local Compose or the production host is a build flag, not a code change.
 
