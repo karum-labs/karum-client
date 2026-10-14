@@ -1,0 +1,7 @@
+{
+	// `dart format` is what CI enforces (see .github/workflows/ci.yml).
+	"editor.formatOnSave": true,
+	"[dart]": {
+		"editor.defaultFormatter": "Dart-Code.dart-code"
+	}
+}

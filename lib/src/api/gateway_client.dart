@@ -17,8 +17,7 @@ class GatewayException implements Exception {
   final int? statusCode;
 
   @override
-  String toString() =>
-      'GatewayException(${statusCode ?? 'network'}: $message)';
+  String toString() => 'GatewayException(${statusCode ?? 'network'}: $message)';
 }
 
 /// Thin HTTP client for the Karum gateway.
@@ -26,8 +25,8 @@ class GatewayException implements Exception {
 /// A [http.Client] can be injected for tests; otherwise a real client is used.
 class GatewayClient {
   GatewayClient({http.Client? httpClient, String? baseUrl})
-      : _http = httpClient ?? http.Client(),
-        _baseUrl = _normalise(baseUrl ?? AppConfig.gatewayBaseUrl);
+    : _http = httpClient ?? http.Client(),
+      _baseUrl = _normalise(baseUrl ?? AppConfig.gatewayBaseUrl);
 
   final http.Client _http;
   final String _baseUrl;

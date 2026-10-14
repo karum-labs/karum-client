@@ -12,9 +12,8 @@ import 'package:karum/src/widgets/async_states.dart';
 GatewayClient _clientWith(MockClientHandler handler) =>
     GatewayClient(httpClient: MockClient(handler), baseUrl: 'http://test');
 
-Widget _app(GatewayClient client) => MaterialApp(
-      home: HomeScreen(client: client),
-    );
+Widget _app(GatewayClient client) =>
+    MaterialApp(home: HomeScreen(client: client));
 
 void main() {
   testWidgets('shows loading then a healthy status', (tester) async {
@@ -43,13 +42,17 @@ void main() {
 
     expect(find.byType(LoadingState), findsNothing);
     // The landing tagline is unique to the body (the AppBar title is separate).
-    expect(find.text('A wrong tenant is a multi-year mistake.'), findsOneWidget);
+    expect(
+      find.text('A wrong tenant is a multi-year mistake.'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Fixture mode'), findsOneWidget);
     expect(find.text('gateway'), findsOneWidget);
   });
 
-  testWidgets('shows an error state with retry when the gateway is down',
-      (tester) async {
+  testWidgets('shows an error state with retry when the gateway is down', (
+    tester,
+  ) async {
     final client = _clientWith(
       (request) async => throw http.ClientException('connection refused'),
     );
@@ -75,15 +78,12 @@ void main() {
     expect(find.textContaining('429'), findsOneWidget);
   });
 
-  testWidgets('shows a degraded banner when the gateway reports degraded',
-      (tester) async {
+  testWidgets('shows a degraded banner when the gateway reports degraded', (
+    tester,
+  ) async {
     final client = _clientWith(
       (request) async => http.Response(
-        jsonEncode({
-          'service': 'gateway',
-          'status': 'ok',
-          'mode': 'degraded',
-        }),
+        jsonEncode({'service': 'gateway', 'status': 'ok', 'mode': 'degraded'}),
         200,
         headers: {'content-type': 'application/json'},
       ),

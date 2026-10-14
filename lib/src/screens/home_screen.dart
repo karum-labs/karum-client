@@ -50,10 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Karum'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Karum'), centerTitle: false),
       body: FutureBuilder<HealthStatus>(
         future: _health,
         builder: (context, snapshot) {
@@ -119,8 +116,9 @@ class _HealthView extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'A wrong tenant is a multi-year mistake.',
-                style: theme.textTheme.bodyLarge
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
@@ -169,20 +167,20 @@ class _ModeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final (Color color, String label, IconData icon) = switch (mode) {
       GatewayMode.live => (
-          AppTheme.catchmentFit,
-          'Live mode — real upstream data',
-          Icons.bolt,
-        ),
+        AppTheme.catchmentFit,
+        'Live mode — real upstream data',
+        Icons.bolt,
+      ),
       GatewayMode.fixture => (
-          AppTheme.coTenancy,
-          'Fixture mode — replaying recorded data',
-          Icons.science_outlined,
-        ),
+        AppTheme.coTenancy,
+        'Fixture mode — replaying recorded data',
+        Icons.science_outlined,
+      ),
       GatewayMode.degraded => (
-          AppTheme.cannibalisation,
-          'Degraded — running the autopilot fallback',
-          Icons.warning_amber_rounded,
-        ),
+        AppTheme.cannibalisation,
+        'Degraded — running the autopilot fallback',
+        Icons.warning_amber_rounded,
+      ),
     };
 
     return Container(
@@ -200,9 +198,7 @@ class _ModeBanner extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
+              style: Theme.of(context).textTheme.labelLarge
                   ?.copyWith(color: color),
             ),
           ),
@@ -229,8 +225,9 @@ class _InfoRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           Text(value, style: theme.textTheme.titleMedium),
         ],
