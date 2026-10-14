@@ -64,6 +64,10 @@ flutter test      # widget tests
 flutter pub get   # fetch dependencies
 ```
 
+## Ownership
+
+Karum is a two-person build (record: [`DECISIONS.md`](https://github.com/karum-labs/karum-infra/blob/main/DECISIONS.md)). **Side A** owns taste, score, agent, and eval; **side B** owns UI, map, drafts, deploy, and Devpost. This repo is **side B** — UI, map, and the deliverable actions. It renders the server's rank and reason codes as-is: no client-side re-sorting, no re-derived scores.
+
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).
