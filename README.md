@@ -6,7 +6,7 @@ Part of the five-repo Karum layout:
 
 | Repo | Role |
 | --- | --- |
-| [`karum-infra`](https://github.com/karum-labs/karum-infra) | Shared protos, Docker Compose, Cloud Run manifests |
+| [`karum-infra`](https://github.com/karum-labs/karum-infra) | Shared protos, the laptop run path, and the demo VM |
 | **`karum-client`** (this repo) | Flutter UI (web / desktop) |
 | [`karum-server`](https://github.com/karum-labs/karum-server) | Go + Gin API gateway |
 | [`karum-service-taste`](https://github.com/karum-labs/karum-service-taste) | Qloo integration, caching, taste scoring |
@@ -16,28 +16,15 @@ Part of the five-repo Karum layout:
 
 Requires the **Flutter SDK** (see the version pin in [`karum-infra`](https://github.com/karum-labs/karum-infra)).
 
-The gateway base URL is supplied with `--dart-define`, so pointing the app at local Compose or the production host is a build flag, not a code change.
+The gateway base URL is supplied with `--dart-define`. On the laptop, start the stack from `karum-infra` with `make local`. That opens this app against the local gateway. To start the client on its own once the gateway is already up:
 
 ```bash
-# Run in Chrome against the local Compose gateway (default).
-flutter run -d chrome --dart-define=GATEWAY_URL=http://localhost:8080
-
-# Run on Windows desktop.
-flutter run -d windows --dart-define=GATEWAY_URL=http://localhost:8080
-
-# Run against a production gateway.
-flutter run -d chrome --dart-define=GATEWAY_URL=https://your-gateway.example.com
+flutter run -d chrome --dart-define=GATEWAY_URL=http://127.0.0.1:8080
 ```
 
 If `GATEWAY_URL` is omitted, the app defaults to `http://localhost:8080`.
 
-### Build for the web
-
-```bash
-flutter build web --dart-define=GATEWAY_URL=https://your-gateway.example.com
-```
-
-The release bundle is written to `build/web/`.
+The hosted demo is https://karum-512016.web.app. `make demo-refresh` in `karum-infra` builds this repo with `GATEWAY_URL=https://35.244.55.185.sslip.io` and deploys `build/web` to that Firebase Hosting site.
 
 ## What's in the scaffold
 
