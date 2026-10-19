@@ -148,15 +148,45 @@ class _HealthView extends StatelessWidget {
                           label: 'Uptime',
                           value: '${status.uptimeSeconds}s',
                         ),
+                      if (status.generatedAt != null)
+                        _InfoRow(
+                          label: 'Generated',
+                          value: status.generatedAt!
+                              .toLocal()
+                              .toIso8601String()
+                              .split('.')
+                              .first,
+                        ),
+                      for (final entry in status.dependencies.entries)
+                        _InfoRow(
+                          label: _dependencyLabel(entry.key),
+                          value: entry.value,
+                        ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onRefresh,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh status'),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onRefresh,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Refresh status'),
+                    ),
+                  ),
+                  const SizedBox(width: KarumSpacing.sm),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (route) => false),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Seed builder'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -227,6 +257,18 @@ class _ModeBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+String _dependencyLabel(String key) {
+  return switch (key) {
+    'gateway' => 'Gateway',
+    'taste' => 'service-taste',
+    'ai' => 'service-ai',
+    'redis' => 'Redis',
+    'postgres' => 'Postgres',
+    'qloo_mode' => 'Qloo mode',
+    _ => key,
+  };
 }
 
 /// A simple label/value row used inside the health card.

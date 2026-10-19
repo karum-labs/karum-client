@@ -1,0 +1,210 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:karum/src/api/gateway_client.dart';
+import 'package:karum/src/api/scout_models.dart';
+import 'package:karum/src/api/scout_request.dart';
+
+GatewayClient _client(MockClientHandler handler) =>
+    GatewayClient(httpClient: MockClient(handler), baseUrl: 'http://test');
+
+void main() {
+  test('createScout posts the body with an Idempotency-Key', () async {
+    late http.Request captured;
+    final client = _client((request) async {
+      captured = request;
+      return http.Response(
+        jsonEncode({
+          'job_id': 'run-0001',
+          'campaign_id': 'cmp-austin-wholesale',
+          'state': 'running',
+          'trace_cursor': '0',
+        }),
+        202,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final job = await client.createScout(
+      ScoutRequest.preset('austin-wholesale'),
+      idempotencyKey: 'karum-test-key',
+    );
+
+    expect(captured.method, 'POST');
+    expect(captured.url.path, '/api/v1/scout');
+    expect(captured.headers['Idempotency-Key'], 'karum-test-key');
+    expect(captured.headers['Content-Type'], contains('application/json'));
+    final body = jsonDecode(captured.body) as Map<String, dynamic>;
+    expect(body['preset_id'], 'austin-wholesale');
+    // Empty optional fields are omitted so equivalent forms hash the same.
+    expect(body.containsKey('free_entry'), isFalse);
+    expect(body.containsKey('city'), isFalse);
+
+    expect(job.jobId, 'run-0001');
+    expect(job.state, JobState.running);
+    expect(job.isRunning, isTrue);
+    expect(job.hasCampaign, isFalse);
+  });
+
+  test('createScout generates a key when none is supplied', () async {
+    late http.Request captured;
+    final client = _client((request) async {
+      captured = request;
+      return http.Response(
+        jsonEncode({'job_id': 'run-0002', 'state': 'running'}),
+        202,
+      );
+    });
+
+    await client.createScout(
+      ScoutRequest.freeEntry(
+        city: 'Austin',
+        mode: ScoutMode.wholesale,
+        radiusMeters: 8000,
+        brandName: 'Sola',
+        skus: const [],
+        seedEntities: const [
+          SeedEntity(
+            id: 'seed-1',
+            type: 'urn:entity:brand',
+            name: 'Sola',
+          ),
+        ],
+        brandQuery: '',
+        fallbackQueries: const [],
+        categoryTags: const ['urn:tag:genre:place:restaurant:bar'],
+        point: null,
+      ),
+    );
+
+    expect(captured.headers['Idempotency-Key'], isNotNull);
+    expect(captured.headers['Idempotency-Key']!.isNotEmpty, isTrue);
+    final body = jsonDecode(captured.body) as Map<String, dynamic>;
+    expect(body['free_entry'], isTrue);
+    expect(body['city'], 'Austin');
+    expect(body['radius_meters'], 8000);
+  });
+
+  test('maps a 422 ambiguous response onto candidates', () async {
+    final client = _client(
+      (request) async => http.Response(
+        jsonEncode({
+          'error': 'ambiguous',
+          'message': 'more than one city matched',
+          'candidates': [
+            {
+              'formatted_address': 'Austin, TX, USA',
+              'lat': 30.2672,
+              'lng': -97.7431,
+            },
+            {
+              'formatted_address': 'Austin, MN, USA',
+              'lat': 43.6666,
+              'lng': -92.9746,
+            },
+          ],
+        }),
+        422,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+
+    await expectLater(
+      client.createScout(ScoutRequest.preset('austin-wholesale')),
+      throwsA(
+        isA<GatewayException>()
+            .having((e) => e.isAmbiguous, 'isAmbiguous', isTrue)
+            .having((e) => e.statusCode, 'statusCode', 422)
+            .having((e) => e.candidates, 'candidates', hasLength(2))
+            .having(
+              (e) => e.candidates.first.formattedAddress,
+              'first candidate',
+              'Austin, TX, USA',
+            )
+            .having(
+              (e) => e.candidates.first.point,
+              'first point',
+              const GeoPoint(30.2672, -97.7431),
+            ),
+      ),
+    );
+  });
+
+  test('maps 409, 429, and 503 onto specific copy', () async {
+    Future<GatewayException> failure(int status, String body) async {
+      final client = _client(
+        (request) async => http.Response(
+          body,
+          status,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      try {
+        await client.fetchScout('run-0001');
+      } on GatewayException catch (error) {
+        return error;
+      }
+      fail('expected a GatewayException');
+    }
+
+    final conflict = await failure(409, '{}');
+    expect(conflict.isConflict, isTrue);
+    expect(conflict.message, contains('already submitted'));
+
+    final limited = await failure(429, 'slow down');
+    expect(limited.isRateLimited, isTrue);
+    expect(limited.message, contains('429'));
+
+    final unavailable = await failure(503, '');
+    expect(unavailable.statusCode, 503);
+    expect(unavailable.message, contains('unavailable'));
+  });
+
+  test('streamEvents parses SSE frames and resumes from a cursor', () async {
+    late http.Request captured;
+    final client = _client((request) async {
+      captured = request;
+      return http.Response(
+        'event: trace\n'
+        'data: {"sequence":3,"cursor":"3","stage":"scout","elapsed_ms":250,'
+        '"cache_hit":false,"detail":"2 doors, 1 skips"}\n'
+        '\n'
+        'event: trace\n'
+        'data: {"sequence":4,"cursor":"4","stage":"persist",'
+        '"elapsed_ms":310,"cache_hit":false,"detail":"ready"}\n'
+        '\n',
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    });
+
+    final events = await client.streamEvents('run-0007', cursor: 2).toList();
+
+    expect(captured.url.path, '/api/v1/scout/run-0007/events');
+    expect(captured.url.queryParameters['cursor'], '2');
+    expect(events, hasLength(2));
+    expect(events.first.sequence, 3);
+    expect(events.first.cursor, '3');
+    expect(events.first.stageLabel, 'Door ranking');
+    expect(events.last.stageLabel, 'Campaign stored');
+    expect(events.last.elapsedLabel, '0.3s');
+  });
+
+  test('streamEvents surfaces a non-200 as a GatewayException', () async {
+    final client = _client(
+      (request) async => http.Response(
+        jsonEncode({'error': 'not_found', 'message': 'no such job'}),
+        404,
+      ),
+    );
+
+    await expectLater(
+      client.streamEvents('missing').toList(),
+      throwsA(
+        isA<GatewayException>().having((e) => e.statusCode, 'statusCode', 404),
+      ),
+    );
+  });
+}

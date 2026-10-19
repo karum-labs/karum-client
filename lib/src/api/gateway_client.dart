@@ -1,20 +1,64 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import 'health_status.dart';
+import 'scout_models.dart';
+import 'scout_request.dart';
+
+/// A city candidate returned with an HTTP 422 `ambiguous` response.
+class CityCandidate {
+  const CityCandidate({
+    required this.formattedAddress,
+    required this.point,
+  });
+
+  final String formattedAddress;
+  final GeoPoint point;
+
+  factory CityCandidate.fromJson(Map<String, dynamic> json) => CityCandidate(
+    formattedAddress: (json['formatted_address'] ?? '').toString(),
+    point: GeoPoint.fromJson(json),
+  );
+}
 
 /// A failure talking to the gateway, carrying enough context for the UI to show
 /// specific copy rather than a generic error.
 class GatewayException implements Exception {
-  const GatewayException(this.message, {this.statusCode});
+  const GatewayException(
+    this.message, {
+    this.statusCode,
+    this.code,
+    this.candidates = const [],
+  });
 
   /// Human-readable description of what went wrong.
   final String message;
 
   /// HTTP status code, when the failure came from a non-2xx response.
   final int? statusCode;
+
+  /// The gateway's machine-readable error code, when present.
+  final String? code;
+
+  /// City candidates for an `ambiguous` geocode response.
+  final List<CityCandidate> candidates;
+
+  /// True when the operator has to choose a city point.
+  bool get isAmbiguous => code == 'ambiguous' && candidates.isNotEmpty;
+
+  /// True when the gateway reported a duplicate submission.
+  bool get isConflict => statusCode == 409;
+
+  /// True when the gateway rate-limited the request.
+  bool get isRateLimited => statusCode == 429;
+
+  /// True when the request failed validation.
+  bool get isValidation => statusCode == 400 && code == 'validation';
 
   @override
   String toString() => 'GatewayException(${statusCode ?? 'network'}: $message)';
@@ -35,42 +79,282 @@ class GatewayClient {
   String get baseUrl => _baseUrl;
 
   /// Fetches `GET /health` and returns the parsed [HealthStatus].
-  ///
-  /// Throws [GatewayException] on a network failure, a non-2xx status, or a
-  /// payload that fails to parse.
   Future<HealthStatus> fetchHealth() async {
-    final uri = Uri.parse('$_baseUrl/health');
+    final response = await _get('/health', timeout: const Duration(seconds: 10));
+    return _parse(response, HealthStatus.fromJson);
+  }
 
-    late final http.Response response;
+  /// Creates a scout. The gateway returns 202 while the pipeline is still
+  /// running, or 201 when the stored run completed synchronously.
+  Future<ScoutJob> createScout(
+    ScoutRequest request, {
+    String? idempotencyKey,
+  }) async {
+    final key = idempotencyKey ?? _newIdempotencyKey();
+    final response = await _send(
+      'POST',
+      '/api/v1/scout',
+      body: request.toJson(),
+      headers: {'Idempotency-Key': key},
+      timeout: const Duration(seconds: 120),
+    );
+    return _parse(response, ScoutJob.fromJson);
+  }
+
+  /// Fetches a job. The response is a compact job while running and the full
+  /// campaign once ready.
+  Future<ScoutJob> fetchScout(String jobId) async {
+    final response = await _get(
+      '/api/v1/scout/${Uri.encodeComponent(jobId)}',
+      timeout: const Duration(seconds: 20),
+    );
+    return _parse(response, ScoutJob.fromJson);
+  }
+
+  /// Restores the newest run attached to a campaign id.
+  Future<Campaign> fetchCampaign(String campaignId) async {
+    final response = await _get(
+      '/api/v1/campaigns/${Uri.encodeComponent(campaignId)}',
+      timeout: const Duration(seconds: 20),
+    );
+    final decoded = _decodeObject(response);
+    if (!decoded.containsKey('doors') && !decoded.containsKey('mode')) {
+      throw const GatewayException(
+        'This campaign has no completed scout yet. Run a scout to create one.',
+        statusCode: 404,
+        code: 'not_found',
+      );
+    }
+    return Campaign.fromJson(decoded);
+  }
+
+  /// Streams trace events after [cursor]. The gateway closes the stream when
+  /// the job reaches a terminal state.
+  Stream<TraceEvent> streamEvents(String jobId, {int cursor = 0}) async* {
+    final uri = Uri.parse(
+      '$_baseUrl/api/v1/scout/${Uri.encodeComponent(jobId)}/events'
+      '?cursor=$cursor',
+    );
+    final request = http.Request('GET', uri)
+      ..headers['Accept'] = 'text/event-stream'
+      ..headers['Cache-Control'] = 'no-cache';
+
+    late final http.StreamedResponse response;
     try {
-      response = await _http.get(uri).timeout(const Duration(seconds: 10));
+      response = await _http.send(request);
     } on http.ClientException catch (e) {
-      throw GatewayException('could not reach the gateway at $uri: $e');
+      throw GatewayException('could not reach the trace stream at $uri: $e');
     } catch (e) {
-      throw GatewayException('request to $uri failed: $e');
+      throw GatewayException('trace request to $uri failed: $e');
     }
 
     if (response.statusCode != 200) {
-      throw GatewayException(
-        'unexpected response from the gateway (HTTP ${response.statusCode})',
-        statusCode: response.statusCode,
-      );
+      final body = await response.stream.bytesToString();
+      throw _errorFrom(response.statusCode, body);
     }
 
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('health payload was not an object');
+    String? data;
+    final lines = response.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
+    await for (final line in lines) {
+      if (line.isEmpty) {
+        if (data != null && data.trim().isNotEmpty) {
+          try {
+            final decoded = jsonDecode(data);
+            if (decoded is Map<String, dynamic>) {
+              yield TraceEvent.fromJson(decoded);
+            }
+          } on FormatException {
+            // A malformed event should not kill a live timeline; the next
+            // event and the terminal campaign payload remain usable.
+          }
+          data = null;
+        }
+        continue;
       }
-      return HealthStatus.fromJson(decoded);
-    } on FormatException catch (e) {
-      throw GatewayException('could not parse the health payload: $e');
+      if (line.startsWith('data:')) {
+        final chunk = line.substring(5).trimLeft();
+        data = data == null ? chunk : '$data\n$chunk';
+      }
     }
+    if (data != null && data.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map<String, dynamic>) {
+          yield TraceEvent.fromJson(decoded);
+        }
+      } on FormatException {
+        // Ignore a partial trailing event.
+      }
+    }
+  }
+
+  /// Aborts a running job.
+  Future<void> abortScout(String jobId) async {
+    await _send(
+      'POST',
+      '/api/v1/scout/${Uri.encodeComponent(jobId)}/abort',
+      timeout: const Duration(seconds: 20),
+    );
+  }
+
+  /// Regenerates one door pitch and returns the updated campaign.
+  Future<Campaign> regenerateDoorPitch(String jobId, String doorId) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
+          '${Uri.encodeComponent(doorId)}',
+      timeout: const Duration(seconds: 75),
+    );
+    return _parse(response, Campaign.fromJson);
+  }
+
+  /// Downloads the server-rendered run-sheet or flagship site brief.
+  Future<Uint8List> downloadDraft(
+    String jobId, {
+    required bool siteBrief,
+  }) async {
+    final path = siteBrief
+        ? '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/site-brief'
+        : '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/run-sheet';
+    final response = await _send(
+      'POST',
+      path,
+      timeout: const Duration(seconds: 75),
+    );
+    if (response.statusCode != 200) {
+      throw _errorFrom(response.statusCode, response.body);
+    }
+    return response.bodyBytes;
   }
 
   /// Releases the underlying HTTP client.
   void close() => _http.close();
 
+  Future<http.Response> _get(
+    String path, {
+    required Duration timeout,
+  }) => _send('GET', path, timeout: timeout);
+
+  Future<http.Response> _send(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+    required Duration timeout,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final request = http.Request(method, uri);
+    request.headers['Accept'] = 'application/json';
+    if (headers != null) request.headers.addAll(headers);
+    if (body != null) {
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode(body);
+    }
+
+    late http.Response response;
+    try {
+      final streamed = await _http.send(request);
+      response = await http.Response.fromStream(streamed);
+    } on http.ClientException catch (e) {
+      throw GatewayException('could not reach the gateway at $uri: $e');
+    } on TimeoutException {
+      throw GatewayException(
+        'the gateway did not answer at $uri within ${timeout.inSeconds}s',
+        statusCode: 504,
+        code: 'timeout',
+      );
+    } catch (e) {
+      throw GatewayException('request to $uri failed: $e');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    throw _errorFrom(response.statusCode, response.body);
+  }
+
+  T _parse<T>(http.Response response, T Function(Map<String, dynamic>) parse) {
+    final decoded = _decodeObject(response);
+    try {
+      return parse(decoded);
+    } on FormatException catch (e) {
+      throw GatewayException('could not parse the gateway payload: $e');
+    }
+  }
+
+  Map<String, dynamic> _decodeObject(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+      throw const FormatException('payload was not an object');
+    } on FormatException catch (e) {
+      throw GatewayException('could not parse the gateway payload: $e');
+    }
+  }
+
+  GatewayException _errorFrom(int status, String body) {
+    String? code;
+    String? message;
+    final candidates = <CityCandidate>[];
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        code = decoded['error']?.toString();
+        message = decoded['message']?.toString();
+        final rawCandidates = decoded['candidates'];
+        if (rawCandidates is List) {
+          for (final raw in rawCandidates) {
+            if (raw is Map) {
+              candidates.add(
+                CityCandidate.fromJson(
+                  raw.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+              );
+            }
+          }
+        }
+      }
+    } on FormatException {
+      // Non-JSON error pages are common from a proxy; use the status fallback.
+    }
+
+    final resolved = switch (status) {
+      429 =>
+        'The gateway is rate-limiting requests (429). Wait a few seconds and try again.',
+      409 =>
+        'This request was already submitted with a different body. Reload the form and try again.',
+      422 when code == 'ambiguous' =>
+        message ?? 'The city query is ambiguous. Choose a candidate.',
+      400 => message ?? 'The request did not pass validation.',
+      404 => message ?? 'The requested job or campaign was not found.',
+      503 || 502 =>
+        message ?? 'An upstream service is unavailable. The campaign was left unchanged.',
+      _ => message ?? 'The gateway returned HTTP $status.',
+    };
+
+    return GatewayException(
+      resolved,
+      statusCode: status,
+      code: code,
+      candidates: List.unmodifiable(candidates),
+    );
+  }
+
   static String _normalise(String url) =>
       url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+
+  static String _newIdempotencyKey() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    // Dart's web `nextInt` requires 0 < max < 2^32, so 1 << 32 throws a
+    // RangeError in the browser even though the VM accepts it.
+    final salt = Random.secure().nextInt(1 << 31).toRadixString(16);
+    return 'karum-$now-$salt';
+  }
 }

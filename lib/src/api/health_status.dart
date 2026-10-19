@@ -22,6 +22,8 @@ class HealthStatus {
     required this.mode,
     this.version,
     this.uptimeSeconds,
+    this.dependencies = const {},
+    this.generatedAt,
   });
 
   /// The stable name of the gateway process.
@@ -38,6 +40,12 @@ class HealthStatus {
 
   /// How long the process has been running, in seconds.
   final int? uptimeSeconds;
+
+  /// Per-dependency modes: gateway, taste, ai, redis, postgres, qloo_mode.
+  final Map<String, String> dependencies;
+
+  /// When the gateway generated this payload, when provided.
+  final DateTime? generatedAt;
 
   /// True when the gateway reports a healthy status.
   bool get isHealthy => status == 'ok';
@@ -56,12 +64,24 @@ class HealthStatus {
       throw const FormatException('health payload missing required fields');
     }
 
+    final rawDependencies = json['dependencies'];
+    final dependencies = <String, String>{};
+    if (rawDependencies is Map) {
+      for (final entry in rawDependencies.entries) {
+        if (entry.value != null) {
+          dependencies[entry.key.toString()] = entry.value.toString();
+        }
+      }
+    }
+
     return HealthStatus(
       service: service,
       status: status,
       mode: _modeFromString(mode),
       version: json['version'] as String?,
       uptimeSeconds: (json['uptime_seconds'] as num?)?.toInt(),
+      dependencies: Map.unmodifiable(dependencies),
+      generatedAt: DateTime.tryParse(json['time'] as String? ?? ''),
     );
   }
 
