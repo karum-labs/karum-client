@@ -34,6 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^2.0.0
+  # Renders the official brand artwork. The kit ships the mark and the lockup as
+  # SVG, and the guide's whole point is a mark that stays sharp from 16 px up, so
+  # the app draws the vector originals rather than raster renders of them.
+  flutter_svg: ^2.3.0
   http: ^1.6.0
 
 dev_dependencies:
@@ -58,11 +62,45 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # Official Karum brand artwork, drawn by `KarumLogo`. Only the variants the app
+  # actually renders are bundled; the rest of the kit — one-colour and reversed
+  # marks, README banners, the GitHub org avatar, the Devpost thumbnail — stays
+  # in `assets/brand/` without being shipped in the web build. See BRAND.md.
+  assets:
+    - assets/brand/mark/karum-mark.svg
+    - assets/brand/mark/karum-mark-dark.svg
+    - assets/brand/mark/karum-mark-white.svg
+    - assets/brand/lockup/karum-lockup-light.svg
+    - assets/brand/lockup/karum-lockup-dark.svg
+    - assets/brand/lockup/karum-lockup-white.svg
 
+  # The brand guide's three typefaces — Bricolage Grotesque (headings), IBM Plex
+  # Sans (body), IBM Plex Mono (scores and the evidence drawer) — are all SIL
+  # Open Font License. The font files are NOT part of the supplied kit, so this
+  # block stays inert: until they are dropped into `assets/fonts/`, the families
+  # named in `lib/src/theme/brand_tokens.dart` resolve to the platform default.
+  # Nothing under `lib/` needs to change when they land.
+  #
+  # fonts:
+  #   - family: Bricolage Grotesque
+  #     fonts:
+  #       - asset: assets/fonts/BricolageGrotesque-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/BricolageGrotesque-Bold.ttf
+  #         weight: 700
+  #   - family: IBM Plex Sans
+  #     fonts:
+  #       - asset: assets/fonts/IBMPlexSans-Regular.ttf
+  #       - asset: assets/fonts/IBMPlexSans-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+  #         weight: 600
+  #   - family: IBM Plex Mono
+  #     fonts:
+  #       - asset: assets/fonts/IBMPlexMono-Regular.ttf
+  #       - asset: assets/fonts/IBMPlexMono-Medium.ttf
+  #         weight: 500
+  #
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../api/gateway_client.dart';
 import '../api/health_status.dart';
-import '../theme/app_theme.dart';
+import '../theme/brand_tokens.dart';
 import '../widgets/async_states.dart';
+import '../widgets/karum_logo.dart';
 
 /// The judge-facing landing screen.
 ///
@@ -50,7 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Karum'), centerTitle: false),
+      // The official lockup rather than the product name set as text: the
+      // guide's app header is 24 or 32 px tall and collapses to the mark alone
+      // below 480 px, which KarumLogo does from the available width.
+      appBar: AppBar(title: const KarumLogo(height: KarumBrand.headerHeight)),
       body: FutureBuilder<HealthStatus>(
         future: _health,
         builder: (context, snapshot) {
@@ -108,12 +112,18 @@ class _HealthView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Karum',
-                style: theme.textTheme.displaySmall,
-                textAlign: TextAlign.center,
+              // The hero keeps the lockup at every width — "always show it beside
+              // the wordmark in the hero and cards" is the guide's own fix for a
+              // mark that is quiet on its own — so the 480 px collapse that
+              // applies to the header is switched off here.
+              Center(
+                child: const KarumLogo(
+                  height: KarumBrand.heroLockup,
+                  autoCollapse: false,
+                  semanticLabel: null,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: KarumSpacing.md),
               Text(
                 'A wrong tenant is a multi-year mistake.',
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -165,36 +175,47 @@ class _ModeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+
+    // Which lane accent stands for which gateway mode is an implementation
+    // decision the guide does not make: it names four lanes and four data-mode
+    // badges, not three modes. Live takes the brand itself — the guide's LIVE
+    // badge is the one filled badge — and the two degraded paths take the
+    // accents the guide already uses for caution and for a stated problem. All
+    // four clear AA on both palettes.
     final (Color color, String label, IconData icon) = switch (mode) {
       GatewayMode.live => (
-        AppTheme.catchmentFit,
+        palette.brand,
         'Live mode — real upstream data',
         Icons.bolt,
       ),
       GatewayMode.fixture => (
-        AppTheme.coTenancy,
+        palette.investigate,
         'Fixture mode — replaying recorded data',
         Icons.science_outlined,
       ),
       GatewayMode.degraded => (
-        AppTheme.cannibalisation,
+        palette.avoid,
         'Degraded — running the autopilot fallback',
         Icons.warning_amber_rounded,
       ),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: KarumSpacing.md,
+        vertical: KarumSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(KarumRadius.control),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: KarumSpacing.sm),
           Expanded(
             child: Text(
               label,

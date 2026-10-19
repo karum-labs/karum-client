@@ -23,6 +23,9 @@ class KarumApp extends StatelessWidget {
       title: 'Karum',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      // The guide publishes a light and a dark palette and switches on
+      // `prefers-color-scheme`; ThemeMode.system is that behaviour.
+      darkTheme: AppTheme.dark(),
       home: const HomeScreen(),
     );
   }
