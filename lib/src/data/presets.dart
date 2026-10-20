@@ -175,7 +175,9 @@ abstract final class PresetCatalog {
       Sku(id: 'muji-linen', name: 'Muji Linen Apron'),
     ],
     categoryTags: ['urn:tag:genre:place:restaurant:cafe'],
-    radiusMeters: 10000,
+    // The doors were captured at 8 km; 10 km is the corridor heatmap's radius.
+    // "Inspect this seed" must reproduce the preset, not widen it.
+    radiusMeters: 8000,
     point: GeoPoint(40.7172, -73.9566),
   );
 
