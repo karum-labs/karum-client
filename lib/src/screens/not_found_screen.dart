@@ -43,17 +43,14 @@ class NotFoundScreen extends StatelessWidget {
                             ? 'The page you asked for does not exist.'
                             : 'No Karum screen matches $path.',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: palette.mute,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: palette.mute),
                       ),
                       const SizedBox(height: KarumSpacing.xl),
                       FilledButton.icon(
                         onPressed: () =>
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              '/',
-                              (route) => false,
-                            ),
+                            Navigator.of(context)
+                                .pushNamedAndRemoveUntil('/', (route) => false),
                         icon: const Icon(Icons.home_outlined, size: 18),
                         label: const Text('Back to the seed builder'),
                       ),

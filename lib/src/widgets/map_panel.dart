@@ -9,16 +9,14 @@ import 'common.dart';
 
 /// The map/list surface for a campaign.
 ///
-/// The map draws only facts present in the payload: Places door coordinates,
-/// Qloo heatmap cells when the flagship service returned them, and Routes
-/// geometry when the server encoded it. If any of those are missing, the panel
-/// says so and falls back to the ordered list rather than inventing geometry.
+/// The map draws only facts present in the payload: Places door coordinates
+/// (falling back to the recorded Qloo place point), recorded Qloo skip points,
+/// Qloo heatmap cells and locality boundaries when the flagship service
+/// returned them, and Routes geometry when the server encoded it. If any of
+/// those are missing, the panel says so and falls back to the ordered list
+/// rather than inventing geometry.
 class MapPanel extends StatefulWidget {
-  const MapPanel({
-    super.key,
-    required this.campaign,
-    this.onOpenPitch,
-  });
+  const MapPanel({super.key, required this.campaign, this.onOpenPitch});
 
   final Campaign campaign;
   final ValueChanged<Door>? onOpenPitch;
@@ -46,17 +44,32 @@ class _MapPanelState extends State<MapPanel> {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final campaign = widget.campaign;
-    final doorsWithPoints =
-        campaign.doors.where((door) => door.point != null).toList();
-    final center = campaign.point ?? (doorsWithPoints.isEmpty
-        ? null
-        : doorsWithPoints.first.point);
+    final doorsWithPoints = campaign.doors
+        .where((door) => door.point != null)
+        .toList();
+    final skipsWithPoints = campaign.skipList
+        .where((skip) => skip.point != null)
+        .toList();
+    final cells =
+        campaign.heatmap?.cells.where((cell) => cell.point.isValid).toList() ??
+        const <HeatmapCell>[];
+    final localityCenters =
+        campaign.heatmap?.localities
+            .where((locality) => locality.centroid != null)
+            .toList() ??
+        const <LocalityPolygon>[];
+    final center =
+        campaign.point ??
+        (doorsWithPoints.isNotEmpty ? doorsWithPoints.first.point : null) ??
+        (skipsWithPoints.isNotEmpty ? skipsWithPoints.first.point : null) ??
+        (cells.isNotEmpty ? cells.first.point : null) ??
+        (localityCenters.isNotEmpty ? localityCenters.first.centroid : null);
     return Container(
       color: palette.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _header(context, doorsWithPoints.length),
+          _header(context, doorsWithPoints.length, skipsWithPoints.length),
           Divider(height: 1, color: palette.line),
           Expanded(
             child: _view == _MapView.list || center == null
@@ -68,14 +81,20 @@ class _MapPanelState extends State<MapPanel> {
                               'Doors remain in server order.'
                         : null,
                   )
-                : _buildMap(context, campaign, center, doorsWithPoints),
+                : _buildMap(
+                    context,
+                    campaign,
+                    center,
+                    doorsWithPoints,
+                    skipsWithPoints,
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _header(BuildContext context, int mappedCount) {
+  Widget _header(BuildContext context, int mappedCount, int mappedSkips) {
     final palette = KarumPalette.of(context);
     final campaign = widget.campaign;
     final route = campaign.route;
@@ -99,10 +118,10 @@ class _MapPanelState extends State<MapPanel> {
                     const SectionLabel('Door map'),
                     const SizedBox(height: KarumSpacing.xs),
                     Text(
-                      '${campaign.doors.length} doors · $mappedCount mapped',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: palette.ink,
-                      ),
+                      '${campaign.doors.length} doors · $mappedCount mapped'
+                      '${campaign.skipList.isEmpty ? '' : ' · ${campaign.skipList.length} skipped · $mappedSkips mapped'}',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(color: palette.ink),
                     ),
                   ],
                 ),
@@ -127,7 +146,8 @@ class _MapPanelState extends State<MapPanel> {
               if (route != null && route.skipped)
                 _MapFact(
                   icon: Icons.route_outlined,
-                  label: 'Route skipped${route.skipReason.isEmpty ? '' : ': ${_humanize(route.skipReason)}'}',
+                  label:
+                      'Route skipped${route.skipReason.isEmpty ? '' : ': ${_humanize(route.skipReason)}'}',
                   tone: palette.investigate,
                 ),
               if (route != null && route.failed)
@@ -141,8 +161,16 @@ class _MapPanelState extends State<MapPanel> {
                   icon: Icons.grain_rounded,
                   label:
                       'Heatmap · ${heatmap.cellCount} cells · '
-                      '${heatmap.localityCount} localities',
+                      '${heatmap.localities.isNotEmpty ? heatmap.localities.length : heatmap.localityCount} localities',
                   tone: palette.brand,
+                ),
+              if (campaign.skipList.isNotEmpty)
+                _MapFact(
+                  icon: Icons.remove_circle_outline,
+                  label:
+                      'Skip list · ${campaign.skipList.length} doors'
+                      '${mappedSkips == 0 ? '' : ' · $mappedSkips mapped'}',
+                  tone: palette.avoid,
                 ),
               if (heatmap != null && !heatmap.available)
                 _MapFact(
@@ -167,14 +195,15 @@ class _MapPanelState extends State<MapPanel> {
               ),
             ),
           ],
-          if (heatmap != null && !heatmap.available && heatmap.reason.isNotEmpty)
+          if (heatmap != null &&
+              !heatmap.available &&
+              heatmap.reason.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: KarumSpacing.xs),
               child: Text(
                 heatmap.reason,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.mute),
               ),
             ),
         ],
@@ -187,13 +216,18 @@ class _MapPanelState extends State<MapPanel> {
     Campaign campaign,
     GeoPoint center,
     List<Door> doorsWithPoints,
+    List<SkipItem> skipsWithPoints,
   ) {
     final palette = KarumPalette.of(context);
     final heatmap = campaign.heatmap;
     final route = campaign.route;
     final routePoints = _routePoints(route);
-    final cells = heatmap?.cells.where((cell) => cell.point.isValid).toList() ??
+    final cells =
+        heatmap?.cells.where((cell) => cell.point.isValid).toList() ??
         const <HeatmapCell>[];
+    final localities =
+        heatmap?.localities.where((locality) => locality.hasPolygon).toList() ??
+        const <LocalityPolygon>[];
     final maxAffinity = cells.fold<double>(
       0.01,
       (max, cell) => cell.affinity > max ? cell.affinity : max,
@@ -218,6 +252,27 @@ class _MapPanelState extends State<MapPanel> {
               userAgentPackageName: 'com.karum.app',
               maxNativeZoom: 19,
             ),
+            if (localities.isNotEmpty)
+              PolygonLayer(
+                polygons: [
+                  for (final locality in localities)
+                    Polygon(
+                      points: [
+                        for (final vertex in locality.polygon)
+                          LatLng(vertex.lat, vertex.lng),
+                      ],
+                      color: palette.brand.withValues(alpha: 0.05),
+                      borderColor: palette.brand.withValues(alpha: 0.42),
+                      borderStrokeWidth: 1.2,
+                      label: locality.name,
+                      labelStyle: TextStyle(
+                        color: palette.brand,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
             CircleLayer(
               circles: [
                 CircleMarker(
@@ -254,17 +309,47 @@ class _MapPanelState extends State<MapPanel> {
               ),
             MarkerLayer(
               markers: [
+                for (final skip in skipsWithPoints)
+                  Marker(
+                    point: LatLng(skip.point!.lat, skip.point!.lng),
+                    width: 22,
+                    height: 22,
+                    alignment: Alignment.center,
+                    child: Semantics(
+                      container: true,
+                      label: 'Skipped door ${skip.name}: ${skip.reasonLabel}',
+                      child: Tooltip(
+                        message: '${skip.name} · ${skip.reasonLabel}',
+                        excludeFromSemantics: true,
+                        child: const _SkipPin(),
+                      ),
+                    ),
+                  ),
                 for (final door in doorsWithPoints)
                   Marker(
                     point: LatLng(door.point!.lat, door.point!.lng),
                     width: _selectedDoorId == door.id ? 44 : 34,
                     height: _selectedDoorId == door.id ? 44 : 34,
                     alignment: Alignment.center,
-                    child: GestureDetector(
+                    child: Semantics(
+                      container: true,
+                      button: true,
+                      excludeSemantics: true,
+                      label: 'Recommended door ${door.rank}: ${door.name}',
                       onTap: () => setState(() => _selectedDoorId = door.id),
-                      child: _DoorPin(
-                        rank: door.rank,
-                        selected: _selectedDoorId == door.id,
+                      child: Tooltip(
+                        message: '${door.rank}. ${door.name}',
+                        excludeFromSemantics: true,
+                        child: InkWell(
+                          onTap: () =>
+                              setState(() => _selectedDoorId = door.id),
+                          customBorder: const CircleBorder(),
+                          excludeFromSemantics: true,
+                          child: _DoorPin(
+                            rank: door.rank,
+                            selected: _selectedDoorId == door.id,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -277,7 +362,9 @@ class _MapPanelState extends State<MapPanel> {
           top: KarumSpacing.md,
           child: _Legend(
             hasHeatmap: cells.isNotEmpty,
+            hasLocalities: localities.isNotEmpty,
             hasRoute: routePoints.length > 1,
+            hasSkips: skipsWithPoints.isNotEmpty,
           ),
         ),
         if (_selectedDoor != null)
@@ -307,10 +394,8 @@ class _MapPanelState extends State<MapPanel> {
               _hasGoogleFacts(campaign)
                   ? '© OpenStreetMap · Map data © Google'
                   : '© OpenStreetMap contributors',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: palette.mute,
-                fontSize: 10,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: palette.mute, fontSize: 10),
             ),
           ),
         ),
@@ -369,9 +454,8 @@ class _DoorList extends StatelessWidget {
             color: palette.investigate.withValues(alpha: 0.1),
             child: Text(
               reason!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.ink),
             ),
           ),
         Expanded(
@@ -384,17 +468,19 @@ class _DoorList extends StatelessWidget {
               : ListView.separated(
                   padding: const EdgeInsets.all(KarumSpacing.lg),
                   itemCount: campaign.doors.length,
-                  separatorBuilder: (_, _) => const SizedBox(
-                    height: KarumSpacing.sm,
-                  ),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: KarumSpacing.sm),
                   itemBuilder: (context, index) {
                     final door = campaign.doors[index];
                     return Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap:
-                            onOpenPitch == null ? null : () => onOpenPitch!(door),
-                        borderRadius: BorderRadius.circular(KarumRadius.control),
+                        onTap: onOpenPitch == null
+                            ? null
+                            : () => onOpenPitch!(door),
+                        borderRadius: BorderRadius.circular(
+                          KarumRadius.control,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(KarumSpacing.md),
                           decoration: BoxDecoration(
@@ -420,7 +506,10 @@ class _DoorList extends StatelessWidget {
                                           ?.copyWith(color: palette.ink),
                                     ),
                                     if (door.enrichment != null &&
-                                        door.enrichment!.address.isNotEmpty) ...[
+                                        door
+                                            .enrichment!
+                                            .address
+                                            .isNotEmpty) ...[
                                       const SizedBox(height: 2),
                                       Text(
                                         door.enrichment!.address,
@@ -595,6 +684,31 @@ class _DoorPin extends StatelessWidget {
   }
 }
 
+class _SkipPin extends StatelessWidget {
+  const _SkipPin();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: palette.avoid, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: palette.ink.withValues(alpha: 0.14),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Icon(Icons.remove, size: 12, color: palette.avoid),
+    );
+  }
+}
+
 class _RankBadge extends StatelessWidget {
   const _RankBadge({required this.rank});
 
@@ -614,21 +728,15 @@ class _RankBadge extends StatelessWidget {
       ),
       child: Text(
         '$rank',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: palette.brand,
-          fontWeight: FontWeight.w800,
-        ),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: palette.brand, fontWeight: FontWeight.w800),
       ),
     );
   }
 }
 
 class _MapFact extends StatelessWidget {
-  const _MapFact({
-    required this.icon,
-    required this.label,
-    this.tone,
-  });
+  const _MapFact({required this.icon, required this.label, this.tone});
 
   final IconData icon;
   final String label;
@@ -653,10 +761,17 @@ class _MapFact extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend({required this.hasHeatmap, required this.hasRoute});
+  const _Legend({
+    required this.hasHeatmap,
+    required this.hasLocalities,
+    required this.hasRoute,
+    required this.hasSkips,
+  });
 
   final bool hasHeatmap;
+  final bool hasLocalities;
   final bool hasRoute;
+  final bool hasSkips;
 
   @override
   Widget build(BuildContext context) {
@@ -672,6 +787,18 @@ class _Legend extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _legendRow(palette.brand, 'Recommended door', palette),
+          if (hasSkips) ...[
+            const SizedBox(height: 4),
+            _legendRow(palette.avoid, 'Skipped door', palette),
+          ],
+          if (hasLocalities) ...[
+            const SizedBox(height: 4),
+            _legendRow(
+              palette.brand.withValues(alpha: 0.2),
+              'Qloo locality',
+              palette,
+            ),
+          ],
           if (hasRoute) ...[
             const SizedBox(height: 4),
             _legendRow(palette.brand, 'Field route', palette, line: true),
@@ -756,18 +883,14 @@ class _SelectedDoorCard extends StatelessWidget {
                     door.enrichment?.address ?? 'Places unknown',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.mute,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
                   ),
                 ],
               ),
             ),
             if (onOpen != null)
-              FilledButton(
-                onPressed: onOpen,
-                child: const Text('Pitch'),
-              ),
+              FilledButton(onPressed: onOpen, child: const Text('Pitch')),
             IconButton(
               onPressed: onClose,
               tooltip: 'Close door preview',

@@ -17,11 +17,7 @@ import '../widgets/karum_chrome.dart';
 /// On a laptop the workspace renders this as the door's full pitch view; the
 /// URL is deep-linkable so a judge can restore a single door card.
 class DoorPitchScreen extends StatefulWidget {
-  const DoorPitchScreen({
-    super.key,
-    required this.jobId,
-    required this.doorId,
-  });
+  const DoorPitchScreen({super.key, required this.jobId, required this.doorId});
 
   final String jobId;
   final String doorId;
@@ -73,7 +69,8 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
               : 'The campaign is still running. Open the workspace to watch it '
                     'finish, then return to this door.';
         } else if (job.campaign!.doorById(widget.doorId) == null) {
-          _error = 'That door is not in this campaign. It may have been '
+          _error =
+              'That door is not in this campaign. It may have been '
               'regenerated or restored from a different run.';
         }
       });
@@ -89,9 +86,8 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
   Future<void> _copyScript(Pitch pitch) async {
     await Clipboard.setData(ClipboardData(text: pitch.script));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pitch script copied.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Pitch script copied.')));
   }
 
   Future<void> _regenerate() async {
@@ -110,9 +106,8 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
     } on GatewayException catch (error) {
       if (!mounted) return;
       setState(() => _regenerating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -137,9 +132,7 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            siteBrief ? 'Site brief saved.' : 'Run-sheet saved.',
-          ),
+          content: Text(siteBrief ? 'Site brief saved.' : 'Run-sheet saved.'),
         ),
       );
     } on GatewayException catch (error) {
@@ -215,9 +208,8 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
                     onBackToBoard: () async {
                       final popped = await Navigator.of(context).maybePop();
                       if (!popped && context.mounted) {
-                        Navigator.of(context).pushNamed(
-                          '/scout/${campaign.jobId}',
-                        );
+                        Navigator.of(context)
+                            .pushNamed('/scout/${campaign.jobId}');
                       }
                     },
                   ),
@@ -300,11 +292,7 @@ class _PitchBody extends StatelessWidget {
             const SizedBox(height: KarumSpacing.lg),
             _ScoresCard(door: door),
             const SizedBox(height: KarumSpacing.lg),
-            _RouteCard(
-              campaign: campaign,
-              door: door,
-              stopIndex: stopIndex,
-            ),
+            _RouteCard(campaign: campaign, door: door, stopIndex: stopIndex),
             if (door.menu != null) ...[
               const SizedBox(height: KarumSpacing.lg),
               _MenuCard(menu: door.menu!),
@@ -320,9 +308,8 @@ class _PitchBody extends StatelessWidget {
                 const Spacer(),
                 Text(
                   'Door ${door.id}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: palette.mute,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: palette.mute),
                 ),
               ],
             ),
@@ -384,18 +371,16 @@ class _PitchHeader extends StatelessWidget {
                 children: [
                   Text(
                     door.name,
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontSize: 30,
-                    ),
+                    style: Theme.of(context).textTheme.displaySmall
+                        ?.copyWith(fontSize: 30),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     door.enrichment?.address.isNotEmpty == true
                         ? door.enrichment!.address
                         : 'Places read unavailable',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: palette.mute,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: palette.mute),
                   ),
                 ],
               ),
@@ -407,9 +392,8 @@ class _PitchHeader extends StatelessWidget {
                   door.compositePercent == null
                       ? '—'
                       : '${door.compositePercent!.round()}',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontSize: 40,
-                  ),
+                  style: Theme.of(context).textTheme.displaySmall
+                      ?.copyWith(fontSize: 40),
                 ),
                 const SourceBadge(source: 'model_inference'),
               ],
@@ -465,11 +449,8 @@ class _ScriptCard extends StatelessWidget {
             const SizedBox(height: KarumSpacing.md),
             SelectableText(
               pitch.script,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontSize: 16,
-                height: 1.6,
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.bodyLarge
+                  ?.copyWith(fontSize: 16, height: 1.6, color: palette.ink),
             ),
             const SizedBox(height: KarumSpacing.lg),
             Row(
@@ -522,9 +503,8 @@ class _SkuCard extends StatelessWidget {
           Expanded(
             child: Text(
               'Recommended SKU · ${sku.name}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: palette.ink),
             ),
           ),
         ],
@@ -551,17 +531,15 @@ class _BattlecardCard extends StatelessWidget {
             const SizedBox(height: KarumSpacing.md),
             Text(
               battlecard.headline,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: palette.ink),
             ),
             if (battlecard.incumbentName.isNotEmpty) ...[
               const SizedBox(height: KarumSpacing.xs),
               Text(
                 'Incumbent · ${battlecard.incumbentName}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.avoid,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.avoid),
               ),
             ],
             if (battlecard.talkingPoints.isNotEmpty) ...[
@@ -619,9 +597,8 @@ class _ModeParagraph extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: palette.mute,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: palette.mute),
       ),
     );
   }
@@ -645,8 +622,7 @@ class _ScoresCard extends StatelessWidget {
               children: [
                 const Expanded(child: SectionLabel('Scores')),
                 FormulaBadge(
-                  formula:
-                      'S_door = 0.50 · A_taste + 0.30 · O_shelf + 0.20 · D_demo',
+                  formula: 'S_door = 0.50 · A_taste + 0.30 · O_shelf + 0.20 · D_demo',
                 ),
               ],
             ),
@@ -669,9 +645,8 @@ class _ScoresCard extends StatelessWidget {
               'Shelf and demographic terms are labelled unknown when the '
               'upstream did not return a value. The composite still shows its '
               'own source.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.mute),
             ),
           ],
         ),
@@ -707,36 +682,32 @@ class _RouteCard extends StatelessWidget {
               Text(
                 'The gateway stored no route for this campaign. The door order '
                 'above is still the recommended visiting order.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.mute),
               )
             else if (route.skipped)
               Text(
                 'No route was built${route.skipReason.isEmpty ? '.' : ': '
-                    '${route.skipReason.replaceAll('_', ' ')}.'} '
+                          '${route.skipReason.replaceAll('_', ' ')}.'} '
                 'Use the server door order as the walk list.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.mute),
               )
             else if (route.failed)
               Text(
                 route.error.isEmpty
                     ? 'The route request failed; the door order is unchanged.'
                     : 'The route request failed: ${route.error}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.avoid,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.avoid),
               )
             else ...[
               Text(
                 stopIndex >= 0
                     ? 'Stop ${stopIndex + 1} of ${route.stopIds.length}'
                     : 'Not on the stored route',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: palette.ink,
-                ),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(color: palette.ink),
               ),
               const SizedBox(height: KarumSpacing.sm),
               for (final leg in route.legs.where(
@@ -748,9 +719,8 @@ class _RouteCard extends StatelessWidget {
                     '${leg.fromId == door.id ? 'From' : 'To'} this stop · '
                     '${leg.duration.isEmpty ? 'duration unknown' : leg.duration}'
                     '${leg.distanceMeters > 0 ? ' · ${(leg.distanceMeters / 1000).toStringAsFixed(1)} km' : ''}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.mute,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
                   ),
                 ),
               if (route.attribution.isNotEmpty)
@@ -758,9 +728,8 @@ class _RouteCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: KarumSpacing.sm),
                   child: Text(
                     route.attribution,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: palette.mute,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: palette.mute),
                   ),
                 ),
             ],
@@ -795,18 +764,16 @@ class _MenuCard extends StatelessWidget {
             if (menu.summary.isNotEmpty)
               Text(
                 menu.summary,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.ink,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.ink),
               ),
             if (menu.shelfUnknown)
               Padding(
                 padding: const EdgeInsets.only(top: KarumSpacing.sm),
                 child: Text(
                   'Shelf opportunity could not be verified for this venue.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: palette.investigate,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.investigate),
                 ),
               ),
             for (final incumbent in menu.incumbents)
@@ -823,9 +790,8 @@ class _MenuCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         incumbent.name,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: palette.ink,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: palette.ink),
                       ),
                     ),
                   ],
@@ -854,10 +820,7 @@ class _MenuCard extends StatelessWidget {
 }
 
 class _MissingPitch extends StatelessWidget {
-  const _MissingPitch({
-    required this.regenerating,
-    required this.onRegenerate,
-  });
+  const _MissingPitch({required this.regenerating, required this.onRegenerate});
 
   final bool regenerating;
   final VoidCallback onRegenerate;
@@ -882,9 +845,8 @@ class _MissingPitch extends StatelessWidget {
           Text(
             'The gateway can regenerate it on demand. If the AI is unavailable '
             'it returns an evidence-only template and labels it.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: palette.mute,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: palette.mute),
           ),
           const SizedBox(height: KarumSpacing.lg),
           FilledButton.icon(

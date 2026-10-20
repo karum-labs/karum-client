@@ -179,9 +179,9 @@ class _HealthView extends StatelessWidget {
                   const SizedBox(width: KarumSpacing.sm),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/', (route) => false),
+                      onPressed: () =>
+                          Navigator.of(context)
+                              .pushNamedAndRemoveUntil('/', (route) => false),
                       icon: const Icon(Icons.arrow_back_rounded),
                       label: const Text('Seed builder'),
                     ),

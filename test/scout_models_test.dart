@@ -32,11 +32,12 @@ Map<String, dynamic> _campaignJson() => {
           'source': 'model_inference',
           'inputs': ['rank=1', 'shortlist=25'],
         },
-        'shelf_opportunity': {
-          'value': 0.75,
+        'shelf_opportunity': {'value': 0.75, 'source': 'model_inference'},
+        'composite': {
+          'value': 0.72,
+          'display': 72,
           'source': 'model_inference',
         },
-        'composite': {'value': 0.72, 'display': 72, 'source': 'model_inference'},
       },
       'shared_tags': [
         {'urn': 'urn:tag:genre:place:restaurant:bar', 'label': 'Bars'},
@@ -70,10 +71,7 @@ Map<String, dynamic> _campaignJson() => {
           {
             'name': 'Del Maguey',
             'sources': [
-              {
-                'url': 'https://example.com/menu',
-                'title': 'Spring 2026 menu',
-              },
+              {'url': 'https://example.com/menu', 'title': 'Spring 2026 menu'},
             ],
           },
         ],
@@ -91,9 +89,14 @@ Map<String, dynamic> _campaignJson() => {
         'cultural_affinity': {'value': 0.64, 'source': 'model_inference'},
       },
       'shared_tags': [],
-      'enrichment': {
-        'open_status': 'unknown',
-        'unknown': true,
+      'enrichment': {'open_status': 'unknown', 'unknown': true},
+      'place': {
+        'address': '801 W 6th St, Austin, TX',
+        'website': 'https://example.com/here-nor-there',
+        'hours': 'Tue 17:00-00:00',
+        'phone': '+1 512 555 0199',
+        'lat': 30.271,
+        'lng': -97.7501,
       },
       'evidence_ids': ['ev-0001'],
     },
@@ -106,6 +109,8 @@ Map<String, dynamic> _campaignJson() => {
       'raw_affinity': 0.22,
       'floor': 0.3,
       'competitor_count': 6,
+      'lat': 30.2676,
+      'lng': -97.7387,
     },
   ],
   'evidence': [
@@ -138,6 +143,18 @@ Map<String, dynamic> _campaignJson() => {
     ],
     'cell_count': 1,
     'localities': 2,
+    'locality_polygons': [
+      {
+        'name': 'East Austin',
+        'affinity': 0.8,
+        'centroid': {'lat': 30.262, 'lng': -97.727},
+        'polygon': [
+          {'lat': 30.25, 'lng': -97.74},
+          {'lat': 30.27, 'lng': -97.74},
+          {'lat': 30.27, 'lng': -97.71},
+        ],
+      },
+    ],
   },
   'route': {
     'skipped': false,
@@ -213,12 +230,12 @@ void main() {
     expect(door.scores.demographicAlignment, isNull);
   });
 
-  test('door coordinates come from the Places enrichment', () {
+  test('door coordinates prefer Places, then the recorded Qloo point', () {
     final campaign = Campaign.fromJson(_campaignJson());
     expect(campaign.doors[0].point, const GeoPoint(30.2672, -97.7431));
     expect(campaign.doors[0].enrichment?.openLabel, 'Open');
-    // No Places geometry means no invented marker.
-    expect(campaign.doors[1].point, isNull);
+    expect(campaign.doors[1].point, const GeoPoint(30.271, -97.7501));
+    expect(campaign.doors[1].place?.address, '801 W 6th St, Austin, TX');
     expect(campaign.doors[1].enrichment?.openLabel, 'Places data unavailable');
   });
 
@@ -228,7 +245,10 @@ void main() {
     expect(menu.shelfUnknown, isTrue);
     expect(menu.competitorCount, 2);
     expect(menu.incumbents.single.name, 'Del Maguey');
-    expect(menu.incumbents.single.sources.single.url, 'https://example.com/menu');
+    expect(
+      menu.incumbents.single.sources.single.url,
+      'https://example.com/menu',
+    );
     expect(menu.incumbents.single.sources.single.title, 'Spring 2026 menu');
     // A title-less source falls back to its URL.
     expect(menu.sources.single.title, 'https://example.com/list');
@@ -239,7 +259,10 @@ void main() {
     expect(pitch.template, isTrue);
     expect(pitch.sku?.name, 'Espadín Joven');
     expect(pitch.battlecard?.incumbentName, 'Del Maguey');
-    expect(pitch.battlecard?.talkingPoints.single, 'Only two mezcals on the back bar');
+    expect(
+      pitch.battlecard?.talkingPoints.single,
+      'Only two mezcals on the back bar',
+    );
     expect(pitch.isEmpty, isFalse);
   });
 
@@ -249,6 +272,7 @@ void main() {
     expect(skip.reasonLabel, 'Shelf already saturated');
     expect(skip.floor, 0.3);
     expect(skip.competitorCount, 6);
+    expect(skip.point, const GeoPoint(30.2676, -97.7387));
   });
 
   test('heatmap cells keep their affinity rank', () {
@@ -262,6 +286,10 @@ void main() {
     expect(cell.point, const GeoPoint(30.262, -97.727));
     expect(cell.affinity, 0.8);
     expect(cell.rank, 3);
+    final locality = heatmap.localities.single;
+    expect(locality.name, 'East Austin');
+    expect(locality.hasPolygon, isTrue);
+    expect(locality.centroid, const GeoPoint(30.262, -97.727));
   });
 
   test('route keep its stops and legs in order', () {

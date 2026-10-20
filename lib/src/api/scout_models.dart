@@ -415,6 +415,49 @@ class Pitch {
   }
 }
 
+/// The recorded Qloo place block carried beside a door. These fields are facts
+/// from the insights row, not a Google Places read (PLAN.md §34).
+class QlooPlace {
+  const QlooPlace({
+    this.address = '',
+    this.website = '',
+    this.phone = '',
+    this.hours = '',
+    this.isClosed = false,
+    this.lat,
+    this.lng,
+  });
+
+  final String address;
+  final String website;
+  final String phone;
+  final String hours;
+  final bool isClosed;
+  final double? lat;
+  final double? lng;
+
+  bool get hasCoordinates =>
+      lat != null && lng != null && lat!.isFinite && lng!.isFinite;
+
+  bool get isEmpty =>
+      address.isEmpty &&
+      website.isEmpty &&
+      phone.isEmpty &&
+      hours.isEmpty &&
+      !isClosed &&
+      !hasCoordinates;
+
+  factory QlooPlace.fromJson(Map<String, dynamic> json) => QlooPlace(
+    address: _string(json['address']),
+    website: _string(json['website']),
+    phone: _string(json['phone']),
+    hours: _string(json['hours']),
+    isClosed: _bool(json['is_closed']),
+    lat: _double(json['lat']),
+    lng: _double(json['lng']),
+  );
+}
+
 /// One recommended door.
 class Door {
   const Door({
@@ -423,6 +466,7 @@ class Door {
     required this.rank,
     required this.scores,
     this.sharedTags = const [],
+    this.place,
     this.enrichment,
     this.compare,
     this.pitch,
@@ -435,6 +479,7 @@ class Door {
   final int rank;
   final ScoreSet scores;
   final List<KarumTag> sharedTags;
+  final QlooPlace? place;
   final Enrichment? enrichment;
   final CompareChart? compare;
   final Pitch? pitch;
@@ -444,11 +489,17 @@ class Door {
   /// The composite percentage, or null when the gateway did not return one.
   double? get compositePercent => scores.composite?.percent;
 
-  /// Coordinates from the Places enrichment, when present.
+  /// Coordinates from Places, falling back to the recorded Qloo place point.
   GeoPoint? get point {
     final e = enrichment;
-    if (e == null || !e.hasCoordinates) return null;
-    return GeoPoint(e.lat!, e.lng!);
+    if (e != null && e.hasCoordinates) {
+      return GeoPoint(e.lat!, e.lng!);
+    }
+    final recorded = place;
+    if (recorded != null && recorded.hasCoordinates) {
+      return GeoPoint(recorded.lat!, recorded.lng!);
+    }
+    return null;
   }
 
   factory Door.fromJson(Map<String, dynamic> json) => Door(
@@ -457,6 +508,9 @@ class Door {
     rank: _int(json['rank']),
     scores: ScoreSet.fromJson(_map(json['scores'])),
     sharedTags: _list(json['shared_tags']).map(KarumTag.fromJson).toList(),
+    place: json['place'] is Map
+        ? QlooPlace.fromJson(_map(json['place']))
+        : null,
     enrichment: json['enrichment'] is Map
         ? Enrichment.fromJson(_map(json['enrichment']))
         : null,
@@ -464,9 +518,7 @@ class Door {
         ? CompareChart.fromJson(_map(json['compare']))
         : null,
     pitch: json['pitch'] is Map ? Pitch.fromJson(_map(json['pitch'])) : null,
-    menu: json['menu'] is Map
-        ? MenuFinding.fromJson(_map(json['menu']))
-        : null,
+    menu: json['menu'] is Map ? MenuFinding.fromJson(_map(json['menu'])) : null,
     evidenceIds: _stringList(json['evidence_ids']),
   );
 }
@@ -480,6 +532,8 @@ class SkipItem {
     this.rawAffinity = 0,
     this.floor = 0,
     this.competitorCount = 0,
+    this.lat,
+    this.lng,
   });
 
   final String id;
@@ -488,6 +542,18 @@ class SkipItem {
   final double rawAffinity;
   final double floor;
   final int competitorCount;
+  final double? lat;
+  final double? lng;
+
+  /// The recorded Qloo point for this skip, when the row carried one.
+  GeoPoint? get point {
+    final latitude = lat;
+    final longitude = lng;
+    if (latitude == null || longitude == null) return null;
+    if (!latitude.isFinite || !longitude.isFinite) return null;
+    if (latitude == 0 && longitude == 0) return null;
+    return GeoPoint(latitude, longitude);
+  }
 
   /// Plain-English explanation for a machine-readable reason code.
   String get reasonLabel {
@@ -509,6 +575,8 @@ class SkipItem {
     rawAffinity: _double(json['raw_affinity']) ?? 0,
     floor: _double(json['floor']) ?? 0,
     competitorCount: _int(json['competitor_count']),
+    lat: _double(json['lat']),
+    lng: _double(json['lng']),
   );
 }
 
@@ -585,6 +653,33 @@ class HeatmapCell {
   );
 }
 
+/// One locality boundary returned by the heatmap.
+class LocalityPolygon {
+  const LocalityPolygon({
+    required this.name,
+    this.affinity = 0,
+    this.centroid,
+    this.polygon = const [],
+  });
+
+  final String name;
+  final double affinity;
+  final GeoPoint? centroid;
+  final List<GeoPoint> polygon;
+
+  bool get hasPolygon => polygon.length >= 3;
+
+  factory LocalityPolygon.fromJson(Map<String, dynamic> json) =>
+      LocalityPolygon(
+        name: _string(json['name']),
+        affinity: _double(json['affinity']) ?? 0,
+        centroid: json['centroid'] is Map
+            ? GeoPoint.fromJson(_map(json['centroid']))
+            : null,
+        polygon: _list(json['polygon']).map(GeoPoint.fromJson).toList(),
+      );
+}
+
 /// The flagship heatmap capability.
 class Heatmap {
   const Heatmap({
@@ -595,6 +690,7 @@ class Heatmap {
     this.cells = const [],
     this.cellCount = 0,
     this.localityCount = 0,
+    this.localities = const [],
   });
 
   final bool available;
@@ -604,6 +700,7 @@ class Heatmap {
   final List<HeatmapCell> cells;
   final int cellCount;
   final int localityCount;
+  final List<LocalityPolygon> localities;
 
   factory Heatmap.fromJson(Map<String, dynamic> json) => Heatmap(
     available: _bool(json['available']),
@@ -613,6 +710,9 @@ class Heatmap {
     cells: _list(json['cells']).map(HeatmapCell.fromJson).toList(),
     cellCount: _int(json['cell_count']),
     localityCount: _int(json['localities']),
+    localities: _list(json['locality_polygons'])
+        .map(LocalityPolygon.fromJson)
+        .toList(),
   );
 }
 
@@ -885,9 +985,7 @@ class ScoutJob {
         jobId: campaign.jobId,
         campaignId: campaign.campaignId,
         state: campaign.state,
-        traceCursor: campaign.trace.isEmpty
-            ? ''
-            : campaign.trace.last.cursor,
+        traceCursor: campaign.trace.isEmpty ? '' : campaign.trace.last.cursor,
         errorCode: campaign.errorCode,
         errorMessage: campaign.errorMessage,
         campaign: campaign,

@@ -9,10 +9,7 @@ Future<void> saveBytesImpl(
   required String filename,
   required String mimeType,
 }) async {
-  final blob = web.Blob(
-    [bytes.toJS].toJS,
-    web.BlobPropertyBag(type: mimeType),
-  );
+  final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType));
   final url = web.URL.createObjectURL(blob);
   final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
   anchor

@@ -166,7 +166,8 @@ abstract final class PresetCatalog {
     brand: 'Muji',
     city: 'Brooklyn, NY, US',
     mode: ScoutMode.flagship,
-    description: 'Design retail, ceramics studios, and matcha · corridor heatmap',
+    description:
+        'Design retail, ceramics studios, and matcha · corridor heatmap',
     seeds: _brooklynSeeds,
     skus: [
       Sku(id: 'muji-ceramics', name: 'Muji Ceramic Tableware'),
@@ -280,10 +281,7 @@ abstract final class PresetCatalog {
       label: 'Galleries',
       urn: 'urn:tag:genre:place:art_gallery',
     ),
-    CategoryTagOption(
-      label: 'Ceramics',
-      urn: 'urn:tag:genre:place:ceramics',
-    ),
+    CategoryTagOption(label: 'Ceramics', urn: 'urn:tag:genre:place:ceramics'),
   ];
 
   static List<KnownSeed> _dedupeKnownSeeds(List<KnownSeed> input) {

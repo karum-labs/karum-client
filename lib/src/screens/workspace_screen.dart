@@ -363,7 +363,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String get _elapsedLabel {
@@ -384,9 +385,9 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
         children: [
           KarumHeader(
             showBack: true,
-            onNewScout: () => Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/', (route) => false),
+            onNewScout: () =>
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/', (route) => false),
             onStatus: () => Navigator.of(context).pushNamed('/status'),
             actions: [
               IconButton(
@@ -405,6 +406,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
             ],
           ),
           ModeBanner(health: scope?.health, error: scope?.healthError),
+          const JudgeBanner(),
           _CampaignBar(
             campaign: campaign,
             job: _job,
@@ -442,7 +444,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
           if (_sseDropped && (_job?.isRunning ?? false))
             NoticeBanner(
               title: 'Trace stream dropped',
-              message: _streamError ??
+              message:
+                  _streamError ??
                   'Polling job status every 1.5 seconds until the run ends.',
               tone: NoticeTone.warning,
               icon: Icons.wifi_tethering_off_rounded,
@@ -450,7 +453,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
           if (_pollFailures >= 4)
             NoticeBanner(
               title: 'Gateway unreachable',
-              message: _streamError ??
+              message:
+                  _streamError ??
                   'Showing the last known state. Retry when the gateway is '
                       'back.',
               tone: NoticeTone.danger,
@@ -505,10 +509,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
         Expanded(
           child: _campaign == null
               ? const _ScoutPlaceholder()
-              : MapPanel(
-                  campaign: _campaign!,
-                  onOpenPitch: _openDoor,
-                ),
+              : MapPanel(campaign: _campaign!, onOpenPitch: _openDoor),
         ),
         VerticalDivider(width: 1, color: KarumPalette.of(context).line),
         SizedBox(
@@ -561,10 +562,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                 ),
                 _campaign == null
                     ? const _ScoutPlaceholder()
-                    : MapPanel(
-                        campaign: _campaign!,
-                        onOpenPitch: _openDoor,
-                      ),
+                    : MapPanel(campaign: _campaign!, onOpenPitch: _openDoor),
                 _campaign == null
                     ? const _BoardPlaceholder()
                     : DoorBoard(
@@ -625,9 +623,8 @@ class _CampaignBar extends StatelessWidget {
               campaign?.brand.name.isNotEmpty == true
                   ? campaign!.brand.name
                   : 'Resolving brand…',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: palette.ink),
             ),
             const SizedBox(width: KarumSpacing.sm),
             Icon(Icons.place_outlined, size: 15, color: palette.mute),
@@ -636,9 +633,8 @@ class _CampaignBar extends StatelessWidget {
               campaign?.city.isNotEmpty == true
                   ? campaign!.city
                   : 'Resolving city…',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.mute),
             ),
             if (campaign != null && campaign!.radiusMeters > 0) ...[
               const SizedBox(width: KarumSpacing.md),
@@ -673,9 +669,8 @@ class _CampaignBar extends StatelessWidget {
                 padding: const EdgeInsets.only(left: KarumSpacing.md),
                 child: Text(
                   campaign!.pointAttribution,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: palette.mute,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: palette.mute),
                 ),
               ),
           ],

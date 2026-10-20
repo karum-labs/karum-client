@@ -60,17 +60,17 @@ class SourceBadge extends StatelessWidget {
             height: KarumBrand.sourceDotRadius * 2,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: normalized == 'model_inference' ? Colors.transparent : color,
+              color: normalized == 'model_inference'
+                  ? Colors.transparent
+                  : color,
               border: Border.all(color: color, width: 1.5),
             ),
           ),
           const SizedBox(width: 5),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: palette.mute,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: palette.mute, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -101,9 +101,8 @@ class TagPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: selected ? palette.brand : palette.mute,
-        ),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: selected ? palette.brand : palette.mute),
       ),
     );
   }
@@ -131,9 +130,7 @@ class ScoreBar extends StatelessWidget {
     final value = score?.percent;
     final known = value != null;
     return Semantics(
-      label: known
-          ? '$label ${value.round()} out of 100'
-          : '$label unknown',
+      label: known ? '$label ${value.round()} out of 100' : '$label unknown',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -142,13 +139,14 @@ class ScoreBar extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: (compact
-                          ? Theme.of(context).textTheme.labelSmall
-                          : Theme.of(context).textTheme.bodySmall)
-                      ?.copyWith(
-                        color: palette.ink,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style:
+                      (compact
+                              ? Theme.of(context).textTheme.labelSmall
+                              : Theme.of(context).textTheme.bodySmall)
+                          ?.copyWith(
+                            color: palette.ink,
+                            fontWeight: FontWeight.w600,
+                          ),
                 ),
               ),
               const SizedBox(width: KarumSpacing.sm),
@@ -264,7 +262,10 @@ class FactRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
-      child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: row),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
     );
   }
 }
@@ -336,17 +337,15 @@ class PanePlaceholder extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: palette.ink),
             ),
             const SizedBox(height: KarumSpacing.xs),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.mute),
             ),
           ],
         ),

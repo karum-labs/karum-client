@@ -45,6 +45,7 @@ class _LandingScreenState extends State<LandingScreen> {
   String? _error;
   List<CityCandidate> _candidates = const [];
   String? _idempotencyKey;
+
   /// The point that came with a sample loaded by "Inspect this seed". It lets
   /// the sample run without a geocoder key; editing the city clears it.
   GeoPoint? _presetPoint;
@@ -221,8 +222,12 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   String? _validate() {
-    if (_city.text.trim().isEmpty) return 'Add a city before running the scout.';
-    if (_city.text.trim().length > 200) return 'The city must be 200 characters or fewer.';
+    if (_city.text.trim().isEmpty) {
+      return 'Add a city before running the scout.';
+    }
+    if (_city.text.trim().length > 200) {
+      return 'The city must be 200 characters or fewer.';
+    }
     if (_radiusMeters < 500 || _radiusMeters > 50000) {
       return 'The radius must be between 0.5 and 50 km.';
     }
@@ -266,9 +271,8 @@ class _LandingScreenState extends State<LandingScreen> {
                 Text(
                   'The gateway found more than one match. Pick the point the '
                   'scout should use.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: palette.mute,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: palette.mute),
                 ),
                 const SizedBox(height: KarumSpacing.md),
                 for (final candidate in candidates)
@@ -303,7 +307,9 @@ class _LandingScreenState extends State<LandingScreen> {
   void _addSeed(KnownSeed known) {
     if (_seeds.any((seed) => seed.id == known.entity.id)) return;
     if (_totalSeeds >= 4) {
-      setState(() => _error = 'The seed composite is already at four entities.');
+      setState(
+        () => _error = 'The seed composite is already at four entities.',
+      );
       return;
     }
     setState(() {
@@ -320,7 +326,9 @@ class _LandingScreenState extends State<LandingScreen> {
       return;
     }
     if (_totalSeeds >= 4) {
-      setState(() => _error = 'The seed composite is already at four entities.');
+      setState(
+        () => _error = 'The seed composite is already at four entities.',
+      );
       return;
     }
     setState(() {
@@ -337,7 +345,9 @@ class _LandingScreenState extends State<LandingScreen> {
       return;
     }
     if (_totalSeeds >= 4) {
-      setState(() => _error = 'The seed composite can contain at most four entities.');
+      setState(
+        () => _error = 'The seed composite can contain at most four entities.',
+      );
       return;
     }
     if (_fallbacks.any((item) => item.toLowerCase() == value.toLowerCase())) {
@@ -400,6 +410,7 @@ class _LandingScreenState extends State<LandingScreen> {
             onStatus: () => Navigator.of(context).pushNamed('/status'),
           ),
           ModeBanner(health: scope?.health, error: scope?.healthError),
+          const JudgeBanner(),
           Expanded(
             child: SingleChildScrollView(
               controller: _scroll,
@@ -427,7 +438,8 @@ class _LandingScreenState extends State<LandingScreen> {
                         _buildBuilder(context, width),
                         const SizedBox(height: KarumSpacing.page),
                         _Footer(
-                          onStatus: () => Navigator.of(context).pushNamed('/status'),
+                          onStatus: () =>
+                              Navigator.of(context).pushNamed('/status'),
                         ),
                       ],
                     ),
@@ -456,9 +468,8 @@ class _LandingScreenState extends State<LandingScreen> {
         Text(
           'Each sample posts a stored city, seed, radius, and category tag. '
           'No typing, no geocoder miss.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: KarumPalette.of(context).mute,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: KarumPalette.of(context).mute),
         ),
         const SizedBox(height: KarumSpacing.xl),
         if (width >= 1000)
@@ -527,17 +538,15 @@ class _LandingScreenState extends State<LandingScreen> {
                       Text(
                         'A seed and a city in. A ranked door board, evidence, '
                         'and a pitch out.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: palette.mute,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: palette.mute),
                       ),
                     ],
                   ),
                 ),
                 if (!compact)
                   FormulaBadge(
-                    formula:
-                        'S_door = 0.50 · A_taste + 0.30 · O_shelf + 0.20 · D_demo',
+                    formula: 'S_door = 0.50 · A_taste + 0.30 · O_shelf + 0.20 · D_demo',
                   ),
               ],
             ),
@@ -702,9 +711,8 @@ class _LandingScreenState extends State<LandingScreen> {
                   child: Text(
                     'Scores are Qloo associations, not foot traffic. '
                     'Places facts and menu citations stay labelled.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.mute,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
                   ),
                 ),
                 const SizedBox(width: KarumSpacing.lg),
@@ -717,9 +725,7 @@ class _LandingScreenState extends State<LandingScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                    _submitting ? 'Starting…' : 'Run this scout',
-                  ),
+                  label: Text(_submitting ? 'Starting…' : 'Run this scout'),
                 ),
               ],
             ),
@@ -758,9 +764,8 @@ class _LandingScreenState extends State<LandingScreen> {
             Expanded(
               child: Text(
                 'Search radius',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: palette.ink,
-                ),
+                style: Theme.of(context).textTheme.labelLarge
+                    ?.copyWith(color: palette.ink),
               ),
             ),
             Text(
@@ -787,9 +792,8 @@ class _LandingScreenState extends State<LandingScreen> {
         ),
         Text(
           'The server caps the radius at 50 km.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: palette.mute),
         ),
       ],
     );
@@ -927,11 +931,8 @@ class _Hero extends StatelessWidget {
       'Karum turns a brand seed and a city into a ranked door board, a field '
       'route, and a pitch for every stop. Every number carries its source; '
       'every recommendation carries a reason.',
-      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-        fontSize: 17,
-        color: palette.mute,
-        height: 1.55,
-      ),
+      style: Theme.of(context).textTheme.bodyLarge
+          ?.copyWith(fontSize: 17, color: palette.mute, height: 1.55),
     );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
@@ -942,10 +943,7 @@ class _Hero extends StatelessWidget {
           label: const Text('Load a sample'),
         ),
         const SizedBox(width: KarumSpacing.md),
-        TextButton(
-          onPressed: onHowItWorks,
-          child: const Text('How it works'),
-        ),
+        TextButton(onPressed: onHowItWorks, child: const Text('How it works')),
       ],
     );
 
@@ -987,10 +985,7 @@ class _Hero extends StatelessWidget {
           const SizedBox(height: KarumSpacing.xl),
           actions,
           const SizedBox(height: KarumSpacing.xl),
-          Container(
-            height: 1,
-            color: palette.line,
-          ),
+          Container(height: 1, color: palette.line),
           const SizedBox(height: KarumSpacing.lg),
           Wrap(
             spacing: KarumSpacing.xl,
@@ -1020,20 +1015,22 @@ class _Proof extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.check_circle_outline_rounded, size: 16, color: palette.brand),
+        Icon(
+          Icons.check_circle_outline_rounded,
+          size: 16,
+          color: palette.brand,
+        ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: palette.ink,
-          ),
+          style: Theme.of(context).textTheme.labelLarge
+              ?.copyWith(color: palette.ink),
         ),
         const SizedBox(width: 4),
         Text(
           detail,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: palette.mute),
         ),
       ],
     );
@@ -1075,36 +1072,39 @@ class _PresetCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_outward_rounded, size: 16, color: palette.mute),
+                Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 16,
+                  color: palette.mute,
+                ),
               ],
             ),
             const SizedBox(height: KarumSpacing.lg),
             Text(
               group.name,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(color: palette.ink),
             ),
             const SizedBox(height: KarumSpacing.xs),
             Text(
               '${group.brand} · ${group.city}',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: palette.mute),
             ),
             const SizedBox(height: KarumSpacing.md),
             Text(
               group.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.mute),
             ),
             const SizedBox(height: KarumSpacing.xl),
             if (group.variants.length == 1)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: disabled ? null : () => onRun(group.variants.first),
+                  onPressed: disabled
+                      ? null
+                      : () => onRun(group.variants.first),
                   child: Text(group.variants.first.buttonLabel),
                 ),
               )
@@ -1113,21 +1113,23 @@ class _PresetCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   FilledButton(
-                    onPressed:
-                        disabled ? null : () => onRun(group.variants.first),
+                    onPressed: disabled
+                        ? null
+                        : () => onRun(group.variants.first),
                     child: Text(group.variants.first.buttonLabel),
                   ),
                   const SizedBox(height: KarumSpacing.sm),
                   OutlinedButton(
-                    onPressed:
-                        disabled ? null : () => onRun(group.variants[1]),
+                    onPressed: disabled ? null : () => onRun(group.variants[1]),
                     child: Text(group.variants[1].buttonLabel),
                   ),
                 ],
               ),
             const SizedBox(height: KarumSpacing.sm),
             TextButton(
-              onPressed: disabled ? null : () => onInspect(group.variants.first),
+              onPressed: disabled
+                  ? null
+                  : () => onInspect(group.variants.first),
               child: const Text('Inspect this seed'),
             ),
           ],
@@ -1170,9 +1172,8 @@ class _ErrorNote extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: palette.ink,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: palette.ink),
                 ),
               ),
             ],
@@ -1186,8 +1187,9 @@ class _ErrorNote extends StatelessWidget {
             const SizedBox(height: KarumSpacing.xs),
             for (final candidate in candidates)
               TextButton.icon(
-                onPressed:
-                    onCandidate == null ? null : () => onCandidate!(candidate),
+                onPressed: onCandidate == null
+                    ? null
+                    : () => onCandidate!(candidate),
                 icon: const Icon(Icons.place_outlined, size: 16),
                 label: Text(
                   candidate.formattedAddress.isEmpty
@@ -1222,15 +1224,13 @@ class _Footer extends StatelessWidget {
         children: [
           Text(
             'Karum · tenant mix, not vibes.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: palette.mute,
-            ),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.mute),
           ),
           Text(
             'Qloo associations · Google Places facts · Routes drive times',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: palette.mute,
-            ),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.mute),
           ),
           TextButton(
             onPressed: onStatus,

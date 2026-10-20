@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/health_status.dart';
 import '../api/scout_models.dart';
+import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import 'karum_logo.dart';
 
@@ -66,9 +67,9 @@ class KarumHeader extends StatelessWidget {
               label: 'Karum home',
               button: true,
               child: InkWell(
-                onTap: () => Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/', (route) => false),
+                onTap: () =>
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/', (route) => false),
                 borderRadius: BorderRadius.circular(KarumRadius.control),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
@@ -84,10 +85,7 @@ class KarumHeader extends StatelessWidget {
                 label: const Text('New scout'),
               ),
             if (!hideNav && onStatus != null)
-              TextButton(
-                onPressed: onStatus,
-                child: const Text('Status'),
-              ),
+              TextButton(onPressed: onStatus, child: const Text('Status')),
             for (final action in actions) ...[
               const SizedBox(width: KarumSpacing.sm),
               action,
@@ -151,6 +149,59 @@ class ModeBanner extends StatelessWidget {
   }
 }
 
+/// The judge-mode banner. It is transparent about the automatic judge session
+/// and always offers the anonymous path, so the demo never becomes a login
+/// wall. When the gateway flag is off, it renders nothing.
+class JudgeBanner extends StatelessWidget {
+  const JudgeBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final scope = AppScope.maybeOf(context);
+    if (scope == null || !scope.hackathonMode) {
+      return const SizedBox.shrink();
+    }
+
+    final session = scope.session;
+    if (session != null) {
+      final name = session.account.displayName.isEmpty
+          ? session.account.email
+          : session.account.displayName;
+      return _Banner(
+        background: palette.brand.withValues(alpha: 0.12),
+        foreground: palette.ink,
+        icon: Icons.verified_user_outlined,
+        title: session.account.isJudge ? 'Judge mode' : 'Signed in',
+        message: session.account.isJudge
+            ? 'Signed in as $name for this session. Samples and free entry '
+                  'stay public.'
+            : 'Signed in as $name. The public demo stays open.',
+        action: TextButton(
+          onPressed: () {
+            scope.signOut();
+          },
+          child: const Text('Sign out'),
+        ),
+      );
+    }
+
+    return _Banner(
+      background: palette.brand.withValues(alpha: 0.12),
+      foreground: palette.ink,
+      icon: Icons.badge_outlined,
+      title: 'Judge mode',
+      message:
+          'Hackathon judge access is on. Sign in for an attributed session, '
+          'or keep exploring anonymously.',
+      action: TextButton(
+        onPressed: () => Navigator.of(context).pushNamed('/login'),
+        child: const Text('Judge sign-in'),
+      ),
+    );
+  }
+}
+
 /// A campaign-local notice for degraded runs and warnings.
 class NoticeBanner extends StatelessWidget {
   const NoticeBanner({
@@ -194,6 +245,7 @@ class _Banner extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    this.action,
   });
 
   final Color background;
@@ -201,6 +253,7 @@ class _Banner extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +289,10 @@ class _Banner extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
+          if (action != null) ...[
+            const SizedBox(width: KarumSpacing.sm),
+            action!,
+          ],
         ],
       ),
     );
@@ -277,10 +334,8 @@ class JobStatePill extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             state.label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: palette.ink,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: palette.ink, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -306,10 +361,8 @@ class ModeChip extends StatelessWidget {
       ),
       child: Text(
         mode.shortLabel,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: palette.brand,
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: palette.brand, fontWeight: FontWeight.w700),
       ),
     );
   }

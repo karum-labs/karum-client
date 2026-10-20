@@ -32,7 +32,11 @@ Map<String, dynamic> _campaignJson() => {
       'scores': {
         'cultural_affinity': {'value': 0.91, 'source': 'qloo_fact'},
         'shelf_opportunity': {'value': 0.75, 'source': 'model_inference'},
-        'composite': {'value': 0.72, 'display': 72, 'source': 'model_inference'},
+        'composite': {
+          'value': 0.72,
+          'display': 72,
+          'source': 'model_inference',
+        },
       },
       'shared_tags': [
         {'urn': 'urn:tag:genre:place:restaurant:bar', 'label': 'Bars'},
@@ -43,10 +47,7 @@ Map<String, dynamic> _campaignJson() => {
         'lat': 30.2672,
         'lng': -97.7431,
       },
-      'pitch': {
-        'script': "Whisler's ranks first of 25.",
-        'template': true,
-      },
+      'pitch': {'script': "Whisler's ranks first of 25.", 'template': true},
       'menu': {
         'summary': 'Two mezcal competitors on the list.',
         'shelf_unknown': true,
@@ -55,10 +56,7 @@ Map<String, dynamic> _campaignJson() => {
           {
             'name': 'Del Maguey',
             'sources': [
-              {
-                'url': 'https://example.com/menu',
-                'title': 'Spring menu',
-              },
+              {'url': 'https://example.com/menu', 'title': 'Spring menu'},
             ],
           },
         ],
@@ -191,10 +189,7 @@ void main() {
         jsonDecode(gateway.scoutPosts.single.body) as Map<String, dynamic>;
     expect(body['preset_id'], 'austin-wholesale');
     expect(body.containsKey('free_entry'), isFalse);
-    expect(
-      gateway.scoutPosts.single.headers['Idempotency-Key'],
-      isNotEmpty,
-    );
+    expect(gateway.scoutPosts.single.headers['Idempotency-Key'], isNotEmpty);
 
     // The workspace shows the fixture banner and the ranked door.
     expect(find.textContaining('Fixture mode'), findsOneWidget);
@@ -280,7 +275,9 @@ void main() {
     expect(find.textContaining('Trace stream dropped'), findsNothing);
   });
 
-  testWidgets('workspace lays out at a narrow 420 x 900 window', (tester) async {
+  testWidgets('workspace lays out at a narrow 420 x 900 window', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(420, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);

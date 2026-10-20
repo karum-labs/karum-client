@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:karum/src/api/auth_models.dart';
 import 'package:karum/src/api/gateway_client.dart';
+import 'package:karum/src/api/health_status.dart';
 import 'package:karum/src/api/scout_models.dart';
 import 'package:karum/src/api/scout_request.dart';
 
@@ -66,11 +68,7 @@ void main() {
         brandName: 'Sola',
         skus: const [],
         seedEntities: const [
-          SeedEntity(
-            id: 'seed-1',
-            type: 'urn:entity:brand',
-            name: 'Sola',
-          ),
+          SeedEntity(id: 'seed-1', type: 'urn:entity:brand', name: 'Sola'),
         ],
         brandQuery: '',
         fallbackQueries: const [],
@@ -204,6 +202,119 @@ void main() {
       client.streamEvents('missing').toList(),
       throwsA(
         isA<GatewayException>().having((e) => e.statusCode, 'statusCode', 404),
+      ),
+    );
+  });
+
+  test('health carries the gateway-owned hackathon flag', () {
+    final health = HealthStatus.fromJson({
+      'service': 'gateway',
+      'status': 'ok',
+      'mode': 'fixture',
+      'hackathon_mode': true,
+    });
+    expect(health.hackathonMode, isTrue);
+  });
+
+  test('login stores the token and attaches it to later requests', () async {
+    final requests = <http.Request>[];
+    final client = _client((request) async {
+      requests.add(request);
+      switch (request.url.path) {
+        case '/api/v1/auth/login':
+          return http.Response(
+            jsonEncode({
+              'token': 'tok-1',
+              'expires_at': '2026-11-01T00:00:00Z',
+              'account': {
+                'id': 'acct-judge',
+                'email': 'judge@karum.demo',
+                'display_name': 'Karum Judge',
+                'is_judge': true,
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        case '/api/v1/auth/me':
+          return http.Response(
+            jsonEncode({
+              'account': {
+                'id': 'acct-judge',
+                'email': 'judge@karum.demo',
+                'display_name': 'Karum Judge',
+                'is_judge': true,
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        case '/api/v1/auth/logout':
+          return http.Response('', 204);
+        default:
+          fail('unexpected request: ${request.method} ${request.url}');
+      }
+    });
+
+    final session = await client.login(
+      email: 'judge@karum.demo',
+      password: 'secret',
+    );
+    expect(session, isA<AuthSession>());
+    expect(session.account.isJudge, isTrue);
+    expect(client.token, 'tok-1');
+
+    final loginBody = jsonDecode(requests.first.body) as Map<String, dynamic>;
+    expect(loginBody['email'], 'judge@karum.demo');
+    expect(loginBody['password'], 'secret');
+
+    final account = await client.fetchMe();
+    expect(account.id, 'acct-judge');
+    expect(requests.last.headers['Authorization'], 'Bearer tok-1');
+
+    await client.logout();
+    expect(client.token, isNull);
+    expect(requests.last.url.path, '/api/v1/auth/logout');
+    expect(requests.last.headers['Authorization'], 'Bearer tok-1');
+  });
+
+  test('judgeLogin uses the one-click endpoint and stores its token', () async {
+    final client = _client(
+      (request) async => http.Response(
+        jsonEncode({
+          'token': 'tok-judge',
+          'account': {
+            'id': 'acct-judge',
+            'email': 'judge@karum.demo',
+            'display_name': 'Karum Judge',
+            'is_judge': true,
+          },
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+
+    final session = await client.judgeLogin();
+    expect(session.token, 'tok-judge');
+    expect(client.token, 'tok-judge');
+  });
+
+  test('a 401 is marked as an expired session', () async {
+    final client = _client(
+      (request) async => http.Response(
+        jsonEncode({'error': 'unauthorized', 'message': 'sign in is required'}),
+        401,
+        headers: {'content-type': 'application/json'},
+      ),
+    )..setToken('expired');
+
+    await expectLater(
+      client.fetchMe(),
+      throwsA(
+        isA<GatewayException>()
+            .having((e) => e.isUnauthorized, 'isUnauthorized', isTrue)
+            .having((e) => e.message, 'message', contains('sign in')),
       ),
     );
   });

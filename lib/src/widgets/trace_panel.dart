@@ -102,9 +102,8 @@ class _TracePanelState extends State<TracePanel> {
                                   ? 'SSE dropped · polling status'
                                   : 'Streaming from the gateway')
                             : 'Run complete · trace frozen',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.mute,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: palette.mute),
                       ),
                     ),
                   ],
@@ -117,7 +116,9 @@ class _TracePanelState extends State<TracePanel> {
             child: widget.events.isEmpty
                 ? PanePlaceholder(
                     icon: live ? Icons.hourglass_empty_rounded : Icons.route,
-                    title: live ? 'Waiting for the first hop' : 'No trace events',
+                    title: live
+                        ? 'Waiting for the first hop'
+                        : 'No trace events',
                     message: live
                         ? 'The pipeline writes each completed stage here.'
                         : 'This campaign arrived without a stored trace.',
@@ -149,9 +150,8 @@ class _TracePanelState extends State<TracePanel> {
               color: palette.avoid.withValues(alpha: 0.1),
               child: Text(
                 widget.error!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.ink,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.ink),
               ),
             ),
           Container(
@@ -166,9 +166,8 @@ class _TracePanelState extends State<TracePanel> {
             child: Text(
               '${widget.events.length} stages · append-only · '
               '${widget.polling ? 'polling' : 'SSE'}',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: palette.mute),
             ),
           ),
         ],
@@ -209,9 +208,7 @@ class _TraceRow extends StatelessWidget {
                   ),
                 ),
                 if (!isLast)
-                  Expanded(
-                    child: Container(width: 1, color: palette.line),
-                  ),
+                  Expanded(child: Container(width: 1, color: palette.line)),
               ],
             ),
           ),
@@ -244,9 +241,8 @@ class _TraceRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       event.detail,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                   ],
                   if (event.cacheHit) ...[

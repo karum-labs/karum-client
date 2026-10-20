@@ -7,6 +7,8 @@ Future<void> saveBytesImpl(
   required String filename,
   required String mimeType,
 }) async {
-  final file = File('${Directory.current.path}${Platform.pathSeparator}$filename');
+  final file = File(
+    '${Directory.current.path}${Platform.pathSeparator}$filename',
+  );
   await file.writeAsBytes(bytes, flush: true);
 }

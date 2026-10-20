@@ -22,6 +22,7 @@ class HealthStatus {
     required this.mode,
     this.version,
     this.uptimeSeconds,
+    this.hackathonMode = false,
     this.dependencies = const {},
     this.generatedAt,
   });
@@ -40,6 +41,12 @@ class HealthStatus {
 
   /// How long the process has been running, in seconds.
   final int? uptimeSeconds;
+
+  /// True when the gateway enables the preseeded judge session and banner.
+  ///
+  /// This is gateway-owned: the client must not use a compile-time define, so
+  /// the flag and the API it describes can never drift apart.
+  final bool hackathonMode;
 
   /// Per-dependency modes: gateway, taste, ai, redis, postgres, qloo_mode.
   final Map<String, String> dependencies;
@@ -80,6 +87,7 @@ class HealthStatus {
       mode: _modeFromString(mode),
       version: json['version'] as String?,
       uptimeSeconds: (json['uptime_seconds'] as num?)?.toInt(),
+      hackathonMode: json['hackathon_mode'] == true,
       dependencies: Map.unmodifiable(dependencies),
       generatedAt: DateTime.tryParse(json['time'] as String? ?? ''),
     );

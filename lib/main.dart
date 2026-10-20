@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'src/api/auth_models.dart';
 import 'src/api/gateway_client.dart';
 import 'src/api/health_status.dart';
 import 'src/app/app_scope.dart';
 import 'src/app/routes.dart';
+import 'src/auth/session_storage.dart';
 import 'src/screens/door_pitch_screen.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/judge_entry_screen.dart';
@@ -42,27 +44,49 @@ class _KarumAppState extends State<KarumApp> {
   HealthStatus? _health;
   Object? _healthError;
   bool _healthLoading = true;
-
-  /// The gateway exposes no hackathon flag yet. The client env var keeps the
-  /// judge entry route out of a normal deployment without introducing a login
-  /// wall into the demo path. See PLAN.md §28.
-  static const bool _hackathonMode = bool.fromEnvironment(
-    'HACKATHON_MODE',
-    defaultValue: true,
-  );
+  AuthSession? _session;
+  bool _authResolving = true;
+  bool _judgeAttempted = false;
 
   @override
   void initState() {
     super.initState();
     _ownsClient = widget.client == null;
     _client = widget.client ?? GatewayClient();
-    _refreshHealth();
+    _bootstrap();
   }
 
   @override
   void dispose() {
     if (_ownsClient) _client.close();
     super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    await _restoreSession();
+    await _refreshHealth();
+  }
+
+  /// Restores a saved browser session and validates it with `/auth/me`.
+  Future<void> _restoreSession() async {
+    final token = readSessionToken();
+    if (token == null) {
+      if (mounted) setState(() => _authResolving = false);
+      return;
+    }
+    _client.setToken(token);
+    try {
+      final account = await _client.fetchMe();
+      if (!mounted) return;
+      setState(() {
+        _session = AuthSession(token: token, account: account);
+        _authResolving = false;
+      });
+    } catch (_) {
+      _client.setToken(null);
+      writeSessionToken(null);
+      if (mounted) setState(() => _authResolving = false);
+    }
   }
 
   Future<void> _refreshHealth() async {
@@ -77,6 +101,7 @@ class _KarumAppState extends State<KarumApp> {
         _healthError = null;
         _healthLoading = false;
       });
+      await _maybeAutoJudge(health);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -84,6 +109,50 @@ class _KarumAppState extends State<KarumApp> {
         _healthLoading = false;
       });
     }
+  }
+
+  /// Signs into the preseeded judge account once, silently. The public demo is
+  /// already usable, so a failure only hides the judge banner.
+  Future<void> _maybeAutoJudge(HealthStatus health) async {
+    if (_judgeAttempted || _session != null || !health.hackathonMode) return;
+    _judgeAttempted = true;
+    try {
+      final session = await _client.judgeLogin();
+      if (!mounted) return;
+      _setSession(session);
+    } catch (_) {
+      // The login page remains available; the demo never blocks on this.
+    }
+  }
+
+  Future<void> _signIn(String email, String password) async {
+    final session = await _client.login(email: email, password: password);
+    if (!mounted) return;
+    _setSession(session);
+  }
+
+  Future<void> _judgeSignIn() async {
+    final session = await _client.judgeLogin();
+    if (!mounted) return;
+    _setSession(session);
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await _client.logout();
+    } catch (_) {
+      // A rejected or offline logout still clears the local session.
+    } finally {
+      _client.setToken(null);
+      writeSessionToken(null);
+      if (mounted) setState(() => _session = null);
+    }
+  }
+
+  void _setSession(AuthSession session) {
+    _client.setToken(session.token);
+    writeSessionToken(session.token);
+    setState(() => _session = session);
   }
 
   @override
@@ -106,7 +175,12 @@ class _KarumAppState extends State<KarumApp> {
         healthLoading: _healthLoading,
         healthError: _healthError,
         refreshHealth: _refreshHealth,
-        hackathonMode: _hackathonMode,
+        hackathonMode: _health?.hackathonMode ?? false,
+        session: _session,
+        authResolving: _authResolving,
+        signIn: _signIn,
+        judgeSignIn: _judgeSignIn,
+        signOut: _signOut,
         child: child ?? const SizedBox.shrink(),
       ),
     );
@@ -124,10 +198,7 @@ class _KarumAppState extends State<KarumApp> {
       return _page(HomeScreen(client: _client), settings.name ?? '/status');
     }
     if (segments.length == 1 && segments[0] == 'login') {
-      return _page(
-        JudgeEntryScreen(hackathonMode: _hackathonMode),
-        settings.name ?? '/login',
-      );
+      return _page(const JudgeEntryScreen(), settings.name ?? '/login');
     }
 
     // /scout/:jobId/doors/:doorId

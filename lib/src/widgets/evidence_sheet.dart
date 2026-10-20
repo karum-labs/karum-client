@@ -186,21 +186,9 @@ class _DoorScoreFacts extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final rows = <(String, ScoreTerm?, String)>[
-      (
-        'Cultural affinity',
-        door.scores.culturalAffinity,
-        'A_taste',
-      ),
-      (
-        'Shelf opportunity',
-        door.scores.shelfOpportunity,
-        'O_shelf',
-      ),
-      (
-        'Demographic alignment',
-        door.scores.demographicAlignment,
-        'D_demo',
-      ),
+      ('Cultural affinity', door.scores.culturalAffinity, 'A_taste'),
+      ('Shelf opportunity', door.scores.shelfOpportunity, 'O_shelf'),
+      ('Demographic alignment', door.scores.demographicAlignment, 'D_demo'),
       ('Composite', door.scores.composite, 'S_door'),
     ];
     return Column(
@@ -208,9 +196,8 @@ class _DoorScoreFacts extends StatelessWidget {
       children: [
         Text(
           campaign.formulaText,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.md),
         for (final row in rows)
@@ -230,9 +217,8 @@ class _DoorScoreFacts extends StatelessWidget {
                     ),
                     Text(
                       row.$2?.displayText ?? 'Unknown',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(color: palette.mute),
                     ),
                   ],
                 ),
@@ -241,9 +227,8 @@ class _DoorScoreFacts extends StatelessWidget {
                   for (final input in row.$2!.inputs)
                     Text(
                       '· $input',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                 ],
                 const SizedBox(height: 4),
@@ -274,7 +259,9 @@ class _EvidenceCallCard extends StatelessWidget {
             : Colors.transparent,
         borderRadius: BorderRadius.circular(KarumRadius.control),
         border: Border.all(
-          color: highlighted ? palette.brand.withValues(alpha: 0.35) : palette.line,
+          color: highlighted
+              ? palette.brand.withValues(alpha: 0.35)
+              : palette.line,
         ),
       ),
       child: Column(
@@ -302,16 +289,14 @@ class _EvidenceCallCard extends StatelessWidget {
                 child: SelectableText(
                   call.endpoint,
                   maxLines: 1,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: palette.ink,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.ink),
                 ),
               ),
               Text(
                 '${call.resultCount} results',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(color: palette.mute),
               ),
             ],
           ),
@@ -348,9 +333,8 @@ class _MenuCitations extends StatelessWidget {
         if (menu.summary.isNotEmpty)
           Text(
             menu.summary,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: palette.ink,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: palette.ink),
           ),
         if (menu.shelfUnknown)
           Padding(
@@ -358,9 +342,8 @@ class _MenuCitations extends StatelessWidget {
             child: Text(
               'Shelf opportunity is unknown: the audit did not return a '
               'shelf read for this venue.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.investigate,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.investigate),
             ),
           ),
         for (final incumbent in menu.incumbents) ...[
@@ -372,9 +355,8 @@ class _MenuCitations extends StatelessWidget {
               Expanded(
                 child: Text(
                   incumbent.name,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: palette.ink,
-                  ),
+                  style: Theme.of(context).textTheme.labelLarge
+                      ?.copyWith(color: palette.ink),
                 ),
               ),
             ],

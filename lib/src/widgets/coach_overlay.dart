@@ -86,7 +86,8 @@ Future<void> showCoach(BuildContext context) {
                     ),
                   ],
                 ),
-                if (i < steps.length - 1) const SizedBox(height: KarumSpacing.lg),
+                if (i < steps.length - 1)
+                  const SizedBox(height: KarumSpacing.lg),
               ],
             ],
           ),

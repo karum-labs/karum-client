@@ -39,95 +39,96 @@ class _DoorBoardState extends State<DoorBoard> {
         length: 3,
         child: Container(
           color: palette.surface,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                KarumSpacing.xl,
-                KarumSpacing.xl,
-                KarumSpacing.xl,
-                KarumSpacing.sm,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: SectionLabel('Door board')),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  KarumSpacing.xl,
+                  KarumSpacing.xl,
+                  KarumSpacing.xl,
+                  KarumSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: SectionLabel('Door board')),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              KarumRadius.pill,
+                            ),
+                            border: Border.all(color: palette.line),
+                          ),
+                          child: Text(
+                            'server order',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: palette.mute),
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(KarumRadius.pill),
-                          border: Border.all(color: palette.line),
-                        ),
-                        child: Text(
-                          'server order',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: palette.mute),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: KarumSpacing.xs),
-                  Text(
-                    campaign.doors.isEmpty
-                        ? 'No doors cleared the floor.'
-                        : '${campaign.doors.length} doors · '
-                              'tap a card for the pitch and route',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.mute,
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: KarumSpacing.xs),
+                    Text(
+                      campaign.doors.isEmpty
+                          ? 'No doors cleared the floor.'
+                          : '${campaign.doors.length} doors · '
+                                'tap a card for the pitch and route',
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: KarumSpacing.xl,
+                ),
+                child: _BaselineToggle(
+                  value: _showBaseline,
+                  onChanged: (value) => setState(() => _showBaseline = value),
+                ),
+              ),
+              const SizedBox(height: KarumSpacing.xs),
+              TabBar(
+                labelColor: palette.brand,
+                unselectedLabelColor: palette.mute,
+                indicatorColor: palette.brand,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelStyle: const TextStyle(
+                  fontFamily: KarumFonts.body,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+                tabs: [
+                  Tab(text: 'Recommended (${campaign.doors.length})'),
+                  Tab(text: 'Skip (${campaign.skipList.length})'),
+                  const Tab(text: 'How we know'),
                 ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: KarumSpacing.xl,
+              Divider(height: 1, color: palette.line),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _RecommendedTab(
+                      campaign: campaign,
+                      showBaseline: _showBaseline,
+                      onOpenPitch: widget.onOpenPitch,
+                      onRegenerate: widget.onRegenerate,
+                      regeneratingDoorId: widget.regeneratingDoorId,
+                    ),
+                    _SkipTab(campaign: campaign),
+                    _ExplainTab(campaign: campaign),
+                  ],
+                ),
               ),
-              child: _BaselineToggle(
-                value: _showBaseline,
-                onChanged: (value) => setState(() => _showBaseline = value),
-              ),
-            ),
-            const SizedBox(height: KarumSpacing.xs),
-            TabBar(
-              labelColor: palette.brand,
-              unselectedLabelColor: palette.mute,
-              indicatorColor: palette.brand,
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelStyle: const TextStyle(
-                fontFamily: KarumFonts.body,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-              tabs: [
-                Tab(text: 'Recommended (${campaign.doors.length})'),
-                Tab(text: 'Skip (${campaign.skipList.length})'),
-                const Tab(text: 'How we know'),
-              ],
-            ),
-            Divider(height: 1, color: palette.line),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _RecommendedTab(
-                    campaign: campaign,
-                    showBaseline: _showBaseline,
-                    onOpenPitch: widget.onOpenPitch,
-                    onRegenerate: widget.onRegenerate,
-                    regeneratingDoorId: widget.regeneratingDoorId,
-                  ),
-                  _SkipTab(campaign: campaign),
-                  _ExplainTab(campaign: campaign),
-                ],
-              ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -163,15 +164,11 @@ class _BaselineToggle extends StatelessWidget {
           Expanded(
             child: Text(
               'Compare with the generic LLM baseline',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.ink),
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-          ),
+          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
@@ -233,9 +230,8 @@ class _RecommendedTab extends StatelessWidget {
                   Expanded(
                     child: Text(
                       warning,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                   ),
                 ],
@@ -268,6 +264,29 @@ class _DoorCard extends StatelessWidget {
     final pitch = door.pitch;
     final menu = door.menu;
     final enrichment = door.enrichment;
+    final place = door.place;
+    final enrichmentAddress = enrichment?.address.isNotEmpty == true
+        ? enrichment!.address
+        : '';
+    final address = enrichmentAddress.isNotEmpty
+        ? enrichmentAddress
+        : (place?.address.isNotEmpty == true ? place!.address : '');
+    final addressFromQloo = enrichmentAddress.isEmpty && address.isNotEmpty;
+    final enrichmentWebsite = enrichment?.website.isNotEmpty == true
+        ? enrichment!.website
+        : '';
+    final website = enrichmentWebsite.isNotEmpty
+        ? enrichmentWebsite
+        : (place?.website ?? '');
+    final websiteFromQloo = enrichmentWebsite.isEmpty && website.isNotEmpty;
+    final enrichmentHours = enrichment?.hours.isNotEmpty == true
+        ? enrichment!.hours
+        : '';
+    final hours = enrichmentHours.isNotEmpty
+        ? enrichmentHours
+        : (place?.hours ?? '');
+    final hoursFromQloo = enrichmentHours.isEmpty && hours.isNotEmpty;
+    final phone = place?.phone ?? '';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(KarumSpacing.lg),
@@ -322,13 +341,21 @@ class _DoorCard extends StatelessWidget {
                             ?.copyWith(color: palette.ink),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        enrichment?.address.isNotEmpty == true
-                            ? enrichment!.address
-                            : 'Places read unavailable',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.mute,
-                        ),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            address.isNotEmpty
+                                ? address
+                                : 'Places read unavailable',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: palette.mute),
+                          ),
+                          if (addressFromQloo)
+                            const SourceBadge(source: 'qloo_fact'),
+                        ],
                       ),
                     ],
                   ),
@@ -362,24 +389,52 @@ class _DoorCard extends StatelessWidget {
                     label: enrichment.openLabel,
                     selected: enrichment.openStatus == 'operational',
                   ),
+                if (place?.isClosed == true)
+                  const TagPill(label: 'Closed per Qloo'),
                 if (menu != null && menu.shelfUnknown)
                   TagPill(label: 'Shelf unverified', selected: false),
               ],
             ),
-            if (enrichment != null) ...[
+            if (website.isNotEmpty || hours.isNotEmpty || phone.isNotEmpty) ...[
               const SizedBox(height: KarumSpacing.md),
-              if (enrichment.website.isNotEmpty)
-                FactRow(
-                  icon: Icons.language_rounded,
-                  text: _host(enrichment.website),
-                  onTap: () => openExternal(enrichment.website),
+              if (website.isNotEmpty)
+                Row(
+                  children: [
+                    Expanded(
+                      child: FactRow(
+                        icon: Icons.language_rounded,
+                        text: _host(website),
+                        onTap: () => openExternal(website),
+                      ),
+                    ),
+                    if (websiteFromQloo) const SourceBadge(source: 'qloo_fact'),
+                  ],
                 ),
-              if (enrichment.hours.isNotEmpty)
+              if (hours.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: FactRow(
-                    icon: Icons.schedule_rounded,
-                    text: enrichment.hours,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FactRow(
+                          icon: Icons.schedule_rounded,
+                          text: hours,
+                        ),
+                      ),
+                      if (hoursFromQloo) const SourceBadge(source: 'qloo_fact'),
+                    ],
+                  ),
+                ),
+              if (phone.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FactRow(icon: Icons.phone_rounded, text: phone),
+                      ),
+                      const SourceBadge(source: 'qloo_fact'),
+                    ],
                   ),
                 ),
             ],
@@ -412,18 +467,16 @@ class _DoorCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         menu.summary,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.mute,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: palette.mute),
                       ),
                     ],
                     if (menu.competitorCount > 0) ...[
                       const SizedBox(height: 4),
                       Text(
                         '${menu.competitorCount} incumbents on the shelf',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.mute,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: palette.mute),
                       ),
                     ],
                     for (final incumbent in menu.incumbents.take(3))
@@ -492,9 +545,8 @@ class _DoorCard extends StatelessWidget {
                 door.compare!.tags.isEmpty
                     ? 'Audience overlap available'
                     : 'Audience overlap: ${door.compare!.tags.map((tag) => tag.label).join(', ')}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.brand,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.brand),
               ),
             ],
             if (pitch != null) ...[
@@ -519,10 +571,7 @@ class _DoorCard extends StatelessWidget {
                           ),
                         ),
                         if (pitch.template)
-                          TagPill(
-                            label: 'Template draft',
-                            selected: false,
-                          ),
+                          TagPill(label: 'Template draft', selected: false),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -530,9 +579,8 @@ class _DoorCard extends StatelessWidget {
                       pitch.script,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                     if (pitch.sku != null && pitch.sku!.name.isNotEmpty) ...[
                       const SizedBox(height: KarumSpacing.sm),
@@ -575,9 +623,7 @@ class _DoorCard extends StatelessWidget {
                 ),
                 if (onRegenerate != null)
                   IconButton(
-                    onPressed: regenerating
-                        ? null
-                        : () => onRegenerate!(door),
+                    onPressed: regenerating ? null : () => onRegenerate!(door),
                     tooltip: 'Regenerate this pitch',
                     icon: regenerating
                         ? const SizedBox(
@@ -666,16 +712,14 @@ class _NoDoors extends StatelessWidget {
                 : '$skipped candidates were checked and placed on the skip '
                       'list with a reason. Adjust the seed or radius and run '
                       'it again.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: palette.mute,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: palette.mute),
           ),
           const SizedBox(height: KarumSpacing.lg),
           FilledButton.icon(
-            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-              '/',
-              (route) => false,
-            ),
+            onPressed: () =>
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/', (route) => false),
             icon: const Icon(Icons.tune_rounded, size: 18),
             label: const Text('Adjust the seed'),
           ),
@@ -729,9 +773,8 @@ class _SkipTab extends StatelessWidget {
                   Expanded(
                     child: Text(
                       skip.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: palette.ink,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(color: palette.ink),
                     ),
                   ),
                 ],
@@ -752,23 +795,20 @@ class _SkipTab extends StatelessWidget {
                   if (skip.rawAffinity > 0)
                     Text(
                       'raw affinity ${skip.rawAffinity.toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                   if (skip.floor > 0)
                     Text(
                       'floor ${skip.floor.toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                   if (skip.competitorCount > 0)
                     Text(
                       '${skip.competitorCount} incumbents',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mute,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
                     ),
                 ],
               ),
@@ -798,9 +838,8 @@ class _ExplainTab extends StatelessWidget {
         const SizedBox(height: KarumSpacing.xs),
         Text(
           campaign.formulaText,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.lg),
         const SectionLabel('Sources'),
@@ -820,9 +859,8 @@ class _ExplainTab extends StatelessWidget {
           'inference is the gateway\'s assembly step; it never overrides a '
           'returned fact. Google facts are the Places read and the grounded '
           'menu citations. When a term is missing, the card says unknown.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.xl),
         const SectionLabel('Evidence'),
@@ -831,9 +869,8 @@ class _ExplainTab extends StatelessWidget {
           '${campaign.evidence.length} recorded Qloo calls for this campaign. '
           'The drawer lists the endpoint, parameters, result count, and source '
           'for each one.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: palette.mute,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.md),
         Align(
@@ -844,7 +881,8 @@ class _ExplainTab extends StatelessWidget {
             label: const Text('Open evidence drawer'),
           ),
         ),
-        if (campaign.baseline.hasText || campaign.baseline.errorCode.isNotEmpty) ...[
+        if (campaign.baseline.hasText ||
+            campaign.baseline.errorCode.isNotEmpty) ...[
           const SizedBox(height: KarumSpacing.xl),
           _BaselineCard(baseline: campaign.baseline),
         ],
@@ -883,21 +921,20 @@ class _BaselineCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Generic LLM baseline',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: palette.ink,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: palette.ink),
                 ),
               ),
-              if (baseline.ungrounded) const SourceBadge(source: 'llm_ungrounded'),
+              if (baseline.ungrounded)
+                const SourceBadge(source: 'llm_ungrounded'),
             ],
           ),
           const SizedBox(height: KarumSpacing.sm),
           if (baseline.hasText)
             SelectableText(
               baseline.text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.ink,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.ink),
             )
           else
             Text(
@@ -905,17 +942,15 @@ class _BaselineCard extends StatelessWidget {
                   ? 'The baseline was not stored for this run.'
                   : 'Baseline unavailable (${baseline.errorCode}). The Qloo '
                         'board above is unaffected.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.mute,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.mute),
             ),
           const SizedBox(height: KarumSpacing.sm),
           Text(
             'This answer used no Qloo facts, no Places read, and no menu '
             'grounding. It is shown for contrast, never as a recommendation.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: palette.mute,
-            ),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.mute),
           ),
           if (baseline.venueNames.isNotEmpty) ...[
             const SizedBox(height: KarumSpacing.md),
@@ -923,8 +958,7 @@ class _BaselineCard extends StatelessWidget {
               spacing: KarumSpacing.sm,
               runSpacing: KarumSpacing.xs,
               children: [
-                for (final name in baseline.venueNames)
-                  TagPill(label: name),
+                for (final name in baseline.venueNames) TagPill(label: name),
               ],
             ),
           ],

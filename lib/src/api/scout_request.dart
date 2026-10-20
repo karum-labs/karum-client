@@ -2,11 +2,7 @@ import 'scout_models.dart';
 
 /// One confirmed Qloo entity in a seed.
 class SeedEntity {
-  const SeedEntity({
-    required this.id,
-    required this.name,
-    required this.type,
-  });
+  const SeedEntity({required this.id, required this.name, required this.type});
 
   final String id;
   final String name;
@@ -20,11 +16,7 @@ class SeedEntity {
     return tail.isEmpty ? 'entity' : tail;
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'type': type,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'type': type};
 }
 
 /// The request body for `POST /api/v1/scout`.
@@ -129,12 +121,7 @@ class ScoutRequest {
       if (brandName.trim().isNotEmpty) 'brand_name': brandName.trim(),
       if (skus.isNotEmpty)
         'skus': skus
-            .map(
-              (sku) => {
-                'id': sku.id,
-                'name': sku.name,
-              },
-            )
+            .map((sku) => {'id': sku.id, 'name': sku.name})
             .toList(growable: false),
       if (seedEntities.isNotEmpty)
         'seed_entities': seedEntities

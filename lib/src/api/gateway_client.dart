@@ -6,16 +6,14 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import 'auth_models.dart';
 import 'health_status.dart';
 import 'scout_models.dart';
 import 'scout_request.dart';
 
 /// A city candidate returned with an HTTP 422 `ambiguous` response.
 class CityCandidate {
-  const CityCandidate({
-    required this.formattedAddress,
-    required this.point,
-  });
+  const CityCandidate({required this.formattedAddress, required this.point});
 
   final String formattedAddress;
   final GeoPoint point;
@@ -60,6 +58,9 @@ class GatewayException implements Exception {
   /// True when the request failed validation.
   bool get isValidation => statusCode == 400 && code == 'validation';
 
+  /// True when the session token is missing, expired, or rejected.
+  bool get isUnauthorized => statusCode == 401;
+
   @override
   String toString() => 'GatewayException(${statusCode ?? 'network'}: $message)';
 }
@@ -74,14 +75,96 @@ class GatewayClient {
 
   final http.Client _http;
   final String _baseUrl;
+  String? _token;
 
   /// The gateway base URL with any trailing slash removed.
   String get baseUrl => _baseUrl;
 
+  /// The current opaque session token, when signed in.
+  String? get token => _token;
+
+  /// Replaces the bearer token, for example when restoring a saved session.
+  void setToken(String? token) {
+    final trimmed = token?.trim();
+    _token = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
   /// Fetches `GET /health` and returns the parsed [HealthStatus].
   Future<HealthStatus> fetchHealth() async {
-    final response = await _get('/health', timeout: const Duration(seconds: 10));
+    final response = await _get(
+      '/health',
+      timeout: const Duration(seconds: 10),
+    );
     return _parse(response, HealthStatus.fromJson);
+  }
+
+  /// Signs in with an email and password and stores the returned token.
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/auth/login',
+      body: {'email': email, 'password': password},
+      timeout: const Duration(seconds: 20),
+    );
+    final session = _parse(response, AuthSession.fromJson);
+    _token = session.token;
+    return session;
+  }
+
+  /// Signs into the preseeded judge account without collecting a password.
+  ///
+  /// The gateway returns 404 unless `HACKATHON_MODE=true`.
+  Future<AuthSession> judgeLogin() async {
+    final response = await _send(
+      'POST',
+      '/api/v1/auth/judge',
+      timeout: const Duration(seconds: 20),
+    );
+    final session = _parse(response, AuthSession.fromJson);
+    _token = session.token;
+    return session;
+  }
+
+  /// Resolves the account attached to the current token.
+  Future<AuthAccount> fetchMe() async {
+    final response = await _get(
+      '/api/v1/auth/me',
+      timeout: const Duration(seconds: 15),
+    );
+    final decoded = _decodeObject(response);
+    final rawAccount = decoded['account'];
+    if (rawAccount is! Map) {
+      throw const GatewayException(
+        'the gateway did not return an account',
+        statusCode: 200,
+        code: 'invalid_payload',
+      );
+    }
+    try {
+      return AuthAccount.fromJson(
+        rawAccount.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    } on FormatException catch (e) {
+      throw GatewayException('could not parse the account payload: $e');
+    }
+  }
+
+  /// Revokes the current session and clears the local token.
+  Future<void> logout() async {
+    try {
+      if (_token != null) {
+        await _send(
+          'POST',
+          '/api/v1/auth/logout',
+          timeout: const Duration(seconds: 15),
+        );
+      }
+    } finally {
+      _token = null;
+    }
   }
 
   /// Creates a scout. The gateway returns 202 while the pipeline is still
@@ -138,6 +221,8 @@ class GatewayClient {
     final request = http.Request('GET', uri)
       ..headers['Accept'] = 'text/event-stream'
       ..headers['Cache-Control'] = 'no-cache';
+    final token = _token;
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
     late final http.StreamedResponse response;
     try {
@@ -232,10 +317,8 @@ class GatewayClient {
   /// Releases the underlying HTTP client.
   void close() => _http.close();
 
-  Future<http.Response> _get(
-    String path, {
-    required Duration timeout,
-  }) => _send('GET', path, timeout: timeout);
+  Future<http.Response> _get(String path, {required Duration timeout}) =>
+      _send('GET', path, timeout: timeout);
 
   Future<http.Response> _send(
     String method,
@@ -247,6 +330,8 @@ class GatewayClient {
     final uri = Uri.parse('$_baseUrl$path');
     final request = http.Request(method, uri);
     request.headers['Accept'] = 'application/json';
+    final token = _token;
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
     if (headers != null) request.headers.addAll(headers);
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
@@ -289,9 +374,7 @@ class GatewayClient {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) {
-        return decoded.map(
-          (key, value) => MapEntry(key.toString(), value),
-        );
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
       }
       throw const FormatException('payload was not an object');
     } on FormatException catch (e) {
@@ -326,16 +409,14 @@ class GatewayClient {
     }
 
     final resolved = switch (status) {
-      429 =>
-        'The gateway is rate-limiting requests (429). Wait a few seconds and try again.',
-      409 =>
-        'This request was already submitted with a different body. Reload the form and try again.',
+      429 => 'The gateway is rate-limiting requests (429). Wait a few seconds and try again.',
+      409 => 'This request was already submitted with a different body. Reload the form and try again.',
       422 when code == 'ambiguous' =>
         message ?? 'The city query is ambiguous. Choose a candidate.',
       400 => message ?? 'The request did not pass validation.',
+      401 => message ?? 'Your session has expired. Sign in again to continue.',
       404 => message ?? 'The requested job or campaign was not found.',
-      503 || 502 =>
-        message ?? 'An upstream service is unavailable. The campaign was left unchanged.',
+      503 || 502 => message ?? 'An upstream service is unavailable. The campaign was left unchanged.',
       _ => message ?? 'The gateway returned HTTP $status.',
     };
 
