@@ -5,6 +5,7 @@ import '../theme/brand_tokens.dart';
 import '../util/links.dart';
 import 'common.dart';
 import 'evidence_sheet.dart';
+import 'focus_ring.dart';
 
 /// The shortlist board: recommended doors, the skip list, and the
 /// explainability tab.
@@ -168,7 +169,13 @@ class _BaselineToggle extends StatelessWidget {
                   ?.copyWith(color: palette.ink),
             ),
           ),
-          Switch(value: value, onChanged: onChanged),
+          // The switch is its own control, so it needs its own name. The
+          // label beside it is a different node; without this the switch is
+          // announced as an unlabelled toggle.
+          Semantics(
+            label: 'Compare with the generic LLM baseline',
+            child: Switch(value: value, onChanged: onChanged),
+          ),
         ],
       ),
     );
@@ -604,34 +611,46 @@ class _DoorCard extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       if (onOpenPitch != null)
-                        FilledButton.icon(
-                          onPressed: () => onOpenPitch!(door),
-                          icon: const Icon(Icons.campaign_outlined, size: 18),
-                          label: const Text('Pitch & route'),
+                        FocusRing(
+                          borderRadius: BorderRadius.circular(
+                            KarumRadius.control,
+                          ),
+                          child: FilledButton.icon(
+                            key: const Key('door-pitch'),
+                            onPressed: () => onOpenPitch!(door),
+                            icon: const Icon(Icons.campaign_outlined, size: 18),
+                            label: const Text('Pitch & route'),
+                          ),
                         ),
-                      OutlinedButton.icon(
-                        onPressed: () => showEvidenceSheet(
-                          context,
-                          campaign: _CampaignLookup.of(context),
-                          door: door,
+                      FocusRing(
+                        borderRadius: BorderRadius.circular(
+                          KarumRadius.control,
                         ),
-                        icon: const Icon(Icons.fact_check_outlined, size: 18),
-                        label: const Text('Evidence'),
+                        child: OutlinedButton.icon(
+                          onPressed: () => showEvidenceSheet(
+                            context,
+                            campaign: _CampaignLookup.of(context),
+                            door: door,
+                          ),
+                          icon: const Icon(Icons.fact_check_outlined, size: 18),
+                          label: const Text('Evidence'),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (onRegenerate != null)
-                  IconButton(
-                    onPressed: regenerating ? null : () => onRegenerate!(door),
-                    tooltip: 'Regenerate this pitch',
-                    icon: regenerating
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 20),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.control),
+                    child: NamedIconButton(
+                      label: 'Regenerate this pitch',
+                      onPressed: regenerating
+                          ? null
+                          : () => onRegenerate!(door),
+                      icon: Icons.refresh_rounded,
+                      iconSize: 20,
+                      busy: regenerating,
+                    ),
                   ),
               ],
             ),

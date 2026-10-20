@@ -77,6 +77,23 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     }
   }
 
+  /// Takes the keyboard focus when the route opens.
+  ///
+  /// The route that opened this one keeps the focus it had — the control the
+  /// judge pressed. Flutter then deactivates that route, and a deactivated
+  /// route's scope can no longer be traversed, so the keyboard is stuck: Tab
+  /// walks a route that is no longer on screen and never reaches the board.
+  ///
+  /// Claiming the focus for this route puts the keyboard back where the judge
+  /// is looking. The first Tab then lands on the first control in the
+  /// workspace.
+  void _claimFocus() {
+    final scope = FocusScope.of(context);
+    final current = FocusManager.instance.primaryFocus;
+    if (current != null && current.nearestScope == scope) return;
+    scope.requestFocus();
+  }
+
   @override
   void dispose() {
     _stopLive();
@@ -380,6 +397,11 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   Widget build(BuildContext context) {
     final scope = AppScope.maybeOf(context);
     final campaign = _campaign;
+    // The focus is claimed after the frame so the route's scope is attached
+    // and the board is built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _claimFocus();
+    });
     return Scaffold(
       body: Column(
         children: [
@@ -390,18 +412,14 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                     .pushNamedAndRemoveUntil('/', (route) => false),
             onStatus: () => Navigator.of(context).pushNamed('/status'),
             actions: [
-              IconButton(
-                onPressed: campaign == null || _downloading ? null : _download,
-                tooltip: campaign?.mode == ScoutMode.flagship
+              NamedIconButton(
+                label: campaign?.mode == ScoutMode.flagship
                     ? 'Download site brief'
                     : 'Download run-sheet',
-                icon: _downloading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                onPressed: campaign == null || _downloading ? null : _download,
+                icon: Icons.picture_as_pdf_outlined,
+                iconSize: 20,
+                busy: _downloading,
               ),
             ],
           ),

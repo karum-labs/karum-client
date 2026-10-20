@@ -11,6 +11,7 @@ import '../app/routes.dart';
 import '../data/presets.dart';
 import '../theme/brand_tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/focus_ring.dart';
 import '../widgets/karum_chrome.dart';
 
 /// The landing page and free-entry seed builder.
@@ -558,15 +559,18 @@ class _LandingScreenState extends State<LandingScreen> {
               runSpacing: KarumSpacing.sm,
               children: [
                 for (final mode in ScoutMode.values)
-                  ChoiceChip(
-                    label: Text(mode.label),
-                    selected: _mode == mode,
-                    onSelected: _submitting
-                        ? null
-                        : (_) => setState(() {
-                            _mode = mode;
-                            _markDirty();
-                          }),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.pill),
+                    child: ChoiceChip(
+                      label: Text(mode.label),
+                      selected: _mode == mode,
+                      onSelected: _submitting
+                          ? null
+                          : (_) => setState(() {
+                              _mode = mode;
+                              _markDirty();
+                            }),
+                    ),
                   ),
               ],
             ),
@@ -677,19 +681,22 @@ class _LandingScreenState extends State<LandingScreen> {
               runSpacing: KarumSpacing.sm,
               children: [
                 for (final option in PresetCatalog.categoryTags)
-                  FilterChip(
-                    label: Text(option.label),
-                    selected: _tags.contains(option.urn),
-                    onSelected: _submitting
-                        ? null
-                        : (selected) => setState(() {
-                            if (selected) {
-                              _tags.add(option.urn);
-                            } else {
-                              _tags.remove(option.urn);
-                            }
-                            _markDirty();
-                          }),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.pill),
+                    child: FilterChip(
+                      label: Text(option.label),
+                      selected: _tags.contains(option.urn),
+                      onSelected: _submitting
+                          ? null
+                          : (selected) => setState(() {
+                              if (selected) {
+                                _tags.add(option.urn);
+                              } else {
+                                _tags.remove(option.urn);
+                              }
+                              _markDirty();
+                            }),
+                    ),
                   ),
               ],
             ),
@@ -716,16 +723,20 @@ class _LandingScreenState extends State<LandingScreen> {
                   ),
                 ),
                 const SizedBox(width: KarumSpacing.lg),
-                FilledButton.icon(
-                  onPressed: _submitting ? null : _submitFreeEntry,
-                  icon: _submitting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(_submitting ? 'Starting…' : 'Run this scout'),
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: FilledButton.icon(
+                    key: const Key('free-entry-submit'),
+                    onPressed: _submitting ? null : _submitFreeEntry,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: Text(_submitting ? 'Starting…' : 'Run this scout'),
+                  ),
                 ),
               ],
             ),
@@ -813,10 +824,11 @@ class _LandingScreenState extends State<LandingScreen> {
         helperText:
             'Known entities resolve locally. An unknown brand is sent as a '
             'Qloo search, never invented as an id.',
-        suffixIcon: IconButton(
+        suffixIcon: NamedIconButton(
+          label: 'Search for the typed brand',
           tooltip: 'Use the typed brand as a search',
           onPressed: _submitting ? null : _commitBrandQuery,
-          icon: const Icon(Icons.search_rounded),
+          icon: Icons.search_rounded,
         ),
       ),
     );
@@ -873,10 +885,10 @@ class _LandingScreenState extends State<LandingScreen> {
         prefixIcon: const Icon(Icons.auto_awesome_outlined),
         helperText:
             '$_totalSeeds/4 entities. Vibe chips form a composite seed.',
-        suffixIcon: IconButton(
-          tooltip: 'Add this vibe',
+        suffixIcon: NamedIconButton(
+          label: 'Add this vibe',
           onPressed: _submitting ? null : _addFallback,
-          icon: const Icon(Icons.add_rounded),
+          icon: Icons.add_rounded,
         ),
       ),
     );
@@ -893,10 +905,10 @@ class _LandingScreenState extends State<LandingScreen> {
         hintText: 'Sola Yuzu-Mezcal Aperitif',
         prefixIcon: const Icon(Icons.inventory_2_outlined),
         helperText: '${_skus.length}/24. The pitch chooses one SKU.',
-        suffixIcon: IconButton(
-          tooltip: 'Add this SKU',
+        suffixIcon: NamedIconButton(
+          label: 'Add this SKU',
           onPressed: _submitting ? null : _addSku,
-          icon: const Icon(Icons.add_rounded),
+          icon: Icons.add_rounded,
         ),
       ),
     );
@@ -937,13 +949,22 @@ class _Hero extends StatelessWidget {
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FilledButton.icon(
-          onPressed: onLoadSample,
-          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: const Text('Load a sample'),
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: FilledButton.icon(
+            onPressed: onLoadSample,
+            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+            label: const Text('Load a sample'),
+          ),
         ),
         const SizedBox(width: KarumSpacing.md),
-        TextButton(onPressed: onHowItWorks, child: const Text('How it works')),
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: TextButton(
+            onPressed: onHowItWorks,
+            child: const Text('How it works'),
+          ),
+        ),
       ],
     );
 
@@ -1101,36 +1122,50 @@ class _PresetCard extends StatelessWidget {
             if (group.variants.length == 1)
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
-                  onPressed: disabled
-                      ? null
-                      : () => onRun(group.variants.first),
-                  child: Text(group.variants.first.buttonLabel),
+                child: FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: FilledButton(
+                    onPressed: disabled
+                        ? null
+                        : () => onRun(group.variants.first),
+                    child: Text(group.variants.first.buttonLabel),
+                  ),
                 ),
               )
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FilledButton(
-                    onPressed: disabled
-                        ? null
-                        : () => onRun(group.variants.first),
-                    child: Text(group.variants.first.buttonLabel),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.control),
+                    child: FilledButton(
+                      onPressed: disabled
+                          ? null
+                          : () => onRun(group.variants.first),
+                      child: Text(group.variants.first.buttonLabel),
+                    ),
                   ),
                   const SizedBox(height: KarumSpacing.sm),
-                  OutlinedButton(
-                    onPressed: disabled ? null : () => onRun(group.variants[1]),
-                    child: Text(group.variants[1].buttonLabel),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.control),
+                    child: OutlinedButton(
+                      onPressed: disabled
+                          ? null
+                          : () => onRun(group.variants[1]),
+                      child: Text(group.variants[1].buttonLabel),
+                    ),
                   ),
                 ],
               ),
             const SizedBox(height: KarumSpacing.sm),
-            TextButton(
-              onPressed: disabled
-                  ? null
-                  : () => onInspect(group.variants.first),
-              child: const Text('Inspect this seed'),
+            FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: TextButton(
+                onPressed: disabled
+                    ? null
+                    : () => onInspect(group.variants.first),
+                child: const Text('Inspect this seed'),
+              ),
             ),
           ],
         ),

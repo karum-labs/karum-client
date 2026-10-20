@@ -10,6 +10,7 @@ import '../util/links.dart';
 import '../widgets/async_states.dart';
 import '../widgets/common.dart';
 import '../widgets/evidence_sheet.dart';
+import '../widgets/focus_ring.dart';
 import '../widgets/karum_chrome.dart';
 
 /// The route-addressable pitch surface for one door.
@@ -161,18 +162,19 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
             onNewScout: () => Navigator.of(context).pushNamed('/'),
             onStatus: () => Navigator.of(context).pushNamed('/status'),
             actions: [
-              IconButton(
-                onPressed: campaign == null || _downloading ? null : _download,
-                tooltip: campaign?.mode == ScoutMode.flagship
-                    ? 'Download site brief'
-                    : 'Download run-sheet',
-                icon: _downloading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.picture_as_pdf_outlined, size: 20),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: campaign?.mode == ScoutMode.flagship
+                      ? 'Download site brief'
+                      : 'Download run-sheet',
+                  onPressed: campaign == null || _downloading
+                      ? null
+                      : _download,
+                  icon: Icons.picture_as_pdf_outlined,
+                  iconSize: 20,
+                  busy: _downloading,
+                ),
               ),
             ],
           ),
@@ -300,10 +302,13 @@ class _PitchBody extends StatelessWidget {
             const SizedBox(height: KarumSpacing.xl),
             Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: onBackToBoard,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const Text('Back to the board'),
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: OutlinedButton.icon(
+                    onPressed: onBackToBoard,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Back to the board'),
+                  ),
                 ),
                 const Spacer(),
                 Text(
@@ -403,10 +408,13 @@ class _PitchHeader extends StatelessWidget {
         const SizedBox(height: KarumSpacing.md),
         Row(
           children: [
-            OutlinedButton.icon(
-              onPressed: onEvidence,
-              icon: const Icon(Icons.fact_check_outlined, size: 18),
-              label: const Text('Evidence behind this door'),
+            FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: OutlinedButton.icon(
+                onPressed: onEvidence,
+                icon: const Icon(Icons.fact_check_outlined, size: 18),
+                label: const Text('Evidence behind this door'),
+              ),
             ),
           ],
         ),
@@ -455,22 +463,28 @@ class _ScriptCard extends StatelessWidget {
             const SizedBox(height: KarumSpacing.lg),
             Row(
               children: [
-                FilledButton.tonalIcon(
-                  onPressed: onCopy,
-                  icon: const Icon(Icons.copy_all_outlined, size: 18),
-                  label: const Text('Copy script'),
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: FilledButton.tonalIcon(
+                    onPressed: onCopy,
+                    icon: const Icon(Icons.copy_all_outlined, size: 18),
+                    label: const Text('Copy script'),
+                  ),
                 ),
                 const SizedBox(width: KarumSpacing.sm),
-                OutlinedButton.icon(
-                  onPressed: regenerating ? null : onRegenerate,
-                  icon: regenerating
-                      ? const SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_rounded, size: 18),
-                  label: Text(regenerating ? 'Regenerating…' : 'Regenerate'),
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: OutlinedButton.icon(
+                    onPressed: regenerating ? null : onRegenerate,
+                    icon: regenerating
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(regenerating ? 'Regenerating…' : 'Regenerate'),
+                  ),
                 ),
               ],
             ),

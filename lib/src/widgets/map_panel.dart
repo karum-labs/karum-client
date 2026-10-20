@@ -235,127 +235,145 @@ class _MapPanelState extends State<MapPanel> {
 
     return Stack(
       children: [
-        FlutterMap(
-          options: MapOptions(
-            initialCenter: LatLng(center.lat, center.lng),
-            initialZoom: campaign.mode == ScoutMode.flagship ? 12.2 : 12.8,
-            minZoom: 3,
-            maxZoom: 18,
-            backgroundColor: palette.paper,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-            ),
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.karum.app',
-              maxNativeZoom: 19,
-            ),
-            if (localities.isNotEmpty)
-              PolygonLayer(
-                polygons: [
-                  for (final locality in localities)
-                    Polygon(
-                      points: [
-                        for (final vertex in locality.polygon)
-                          LatLng(vertex.lat, vertex.lng),
-                      ],
-                      color: palette.brand.withValues(alpha: 0.05),
-                      borderColor: palette.brand.withValues(alpha: 0.42),
-                      borderStrokeWidth: 1.2,
-                      label: locality.name,
-                      labelStyle: TextStyle(
-                        color: palette.brand,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
-            CircleLayer(
-              circles: [
-                CircleMarker(
-                  point: LatLng(center.lat, center.lng),
-                  radius: campaign.radiusMeters.toDouble(),
-                  useRadiusInMeter: true,
-                  color: palette.brand.withValues(alpha: 0.05),
-                  borderColor: palette.brand.withValues(alpha: 0.28),
-                  borderStrokeWidth: 1,
+        // The map canvas is not a keyboard surface. It draws its own focus
+        // scope, and a focus that lands inside it is trapped there: Tab walks
+        // the map and never reaches the board. The map carries a list of the
+        // same doors in the same order, and that list is what the keyboard
+        // uses — the Map/List toggle beside the map is outside this scope and
+        // stays focusable, so the keyboard can still switch views.
+        //
+        // The scope itself must not take the focus either: a scope that can be
+        // focused but holds nothing focusable is a trap of its own.
+        FocusScope(
+          canRequestFocus: false,
+          descendantsAreFocusable: false,
+          child: Semantics(
+            label: 'Door map. The same doors are listed below the map.',
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: LatLng(center.lat, center.lng),
+                initialZoom: campaign.mode == ScoutMode.flagship ? 12.2 : 12.8,
+                minZoom: 3,
+                maxZoom: 18,
+                backgroundColor: palette.paper,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 ),
-                for (final cell in cells.take(300))
-                  CircleMarker(
-                    point: LatLng(cell.point.lat, cell.point.lng),
-                    radius: 12 + (cell.affinity / maxAffinity) * 20,
-                    color: palette.brand.withValues(
-                      alpha: 0.08 + (cell.affinity / maxAffinity) * 0.26,
-                    ),
-                    borderColor: palette.brand.withValues(alpha: 0.28),
-                    borderStrokeWidth: 0.8,
-                  ),
-              ],
-            ),
-            if (routePoints.length > 1)
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: routePoints,
-                    strokeWidth: 4,
-                    color: palette.brand,
-                    borderStrokeWidth: 1.5,
-                    borderColor: palette.surface,
-                  ),
-                ],
               ),
-            MarkerLayer(
-              markers: [
-                for (final skip in skipsWithPoints)
-                  Marker(
-                    point: LatLng(skip.point!.lat, skip.point!.lng),
-                    width: 22,
-                    height: 22,
-                    alignment: Alignment.center,
-                    child: Semantics(
-                      container: true,
-                      label: 'Skipped door ${skip.name}: ${skip.reasonLabel}',
-                      child: Tooltip(
-                        message: '${skip.name} · ${skip.reasonLabel}',
-                        excludeFromSemantics: true,
-                        child: const _SkipPin(),
-                      ),
-                    ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.karum.app',
+                  maxNativeZoom: 19,
+                ),
+                if (localities.isNotEmpty)
+                  PolygonLayer(
+                    polygons: [
+                      for (final locality in localities)
+                        Polygon(
+                          points: [
+                            for (final vertex in locality.polygon)
+                              LatLng(vertex.lat, vertex.lng),
+                          ],
+                          color: palette.brand.withValues(alpha: 0.05),
+                          borderColor: palette.brand.withValues(alpha: 0.42),
+                          borderStrokeWidth: 1.2,
+                          label: locality.name,
+                          labelStyle: TextStyle(
+                            color: palette.brand,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
                   ),
-                for (final door in doorsWithPoints)
-                  Marker(
-                    point: LatLng(door.point!.lat, door.point!.lng),
-                    width: _selectedDoorId == door.id ? 44 : 34,
-                    height: _selectedDoorId == door.id ? 44 : 34,
-                    alignment: Alignment.center,
-                    child: Semantics(
-                      container: true,
-                      button: true,
-                      excludeSemantics: true,
-                      label: 'Recommended door ${door.rank}: ${door.name}',
-                      onTap: () => setState(() => _selectedDoorId = door.id),
-                      child: Tooltip(
-                        message: '${door.rank}. ${door.name}',
-                        excludeFromSemantics: true,
-                        child: InkWell(
-                          onTap: () =>
-                              setState(() => _selectedDoorId = door.id),
-                          customBorder: const CircleBorder(),
-                          excludeFromSemantics: true,
-                          child: _DoorPin(
-                            rank: door.rank,
-                            selected: _selectedDoorId == door.id,
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: LatLng(center.lat, center.lng),
+                      radius: campaign.radiusMeters.toDouble(),
+                      useRadiusInMeter: true,
+                      color: palette.brand.withValues(alpha: 0.05),
+                      borderColor: palette.brand.withValues(alpha: 0.28),
+                      borderStrokeWidth: 1,
+                    ),
+                    for (final cell in cells.take(300))
+                      CircleMarker(
+                        point: LatLng(cell.point.lat, cell.point.lng),
+                        radius: 12 + (cell.affinity / maxAffinity) * 20,
+                        color: palette.brand.withValues(
+                          alpha: 0.08 + (cell.affinity / maxAffinity) * 0.26,
+                        ),
+                        borderColor: palette.brand.withValues(alpha: 0.28),
+                        borderStrokeWidth: 0.8,
+                      ),
+                  ],
+                ),
+                if (routePoints.length > 1)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: routePoints,
+                        strokeWidth: 4,
+                        color: palette.brand,
+                        borderStrokeWidth: 1.5,
+                        borderColor: palette.surface,
+                      ),
+                    ],
+                  ),
+                MarkerLayer(
+                  markers: [
+                    for (final skip in skipsWithPoints)
+                      Marker(
+                        point: LatLng(skip.point!.lat, skip.point!.lng),
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        child: Semantics(
+                          container: true,
+                          label:
+                              'Skipped door ${skip.name}: ${skip.reasonLabel}',
+                          child: Tooltip(
+                            message: '${skip.name} · ${skip.reasonLabel}',
+                            excludeFromSemantics: true,
+                            child: const _SkipPin(),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    for (final door in doorsWithPoints)
+                      Marker(
+                        point: LatLng(door.point!.lat, door.point!.lng),
+                        width: _selectedDoorId == door.id ? 44 : 34,
+                        height: _selectedDoorId == door.id ? 44 : 34,
+                        alignment: Alignment.center,
+                        child: Semantics(
+                          container: true,
+                          button: true,
+                          excludeSemantics: true,
+                          label: 'Recommended door ${door.rank}: ${door.name}',
+                          onTap: () =>
+                              setState(() => _selectedDoorId = door.id),
+                          child: Tooltip(
+                            message: '${door.rank}. ${door.name}',
+                            excludeFromSemantics: true,
+                            child: InkWell(
+                              onTap: () =>
+                                  setState(() => _selectedDoorId = door.id),
+                              customBorder: const CircleBorder(),
+                              excludeFromSemantics: true,
+                              child: _DoorPin(
+                                rank: door.rank,
+                                selected: _selectedDoorId == door.id,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
         Positioned(
           left: KarumSpacing.md,
@@ -891,10 +909,11 @@ class _SelectedDoorCard extends StatelessWidget {
             ),
             if (onOpen != null)
               FilledButton(onPressed: onOpen, child: const Text('Pitch')),
-            IconButton(
+            NamedIconButton(
+              label: 'Close door preview',
               onPressed: onClose,
-              tooltip: 'Close door preview',
-              icon: const Icon(Icons.close_rounded, size: 18),
+              icon: Icons.close_rounded,
+              iconSize: 18,
             ),
           ],
         ),

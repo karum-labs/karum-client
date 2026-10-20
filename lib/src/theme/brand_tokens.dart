@@ -340,9 +340,15 @@ abstract final class KarumBrand {
   static const double heroLockup = 56;
 
   /// **official** — the focus ring is 3 px of brand colour, offset 2 px from the
-  /// control. Flutter has no `outline-offset`, so the offset is recorded here and
-  /// the focus styling that can express it lands with §30's keyboard audit.
+  /// control. Flutter has no `outline-offset`, so the offset is a second token
+  /// and the ring is painted outside the control's bounds by `FocusRing`.
   static const double focusRingWidth = 3;
+
+  /// **official** — the focus ring sits 2 px away from the control, so the ring
+  /// reads as its own mark rather than as a border on the control. The gap is
+  /// what makes the ring visible on a filled brand button, where a ring of the
+  /// same colour would otherwise be invisible.
+  static const double focusRingOffset = 2;
 
   /// **official** — an icon is drawn on a 24-unit grid with a 2 to 2.5 unit
   /// stroke, square caps, and miter joins.

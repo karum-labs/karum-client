@@ -4,6 +4,8 @@ import '../api/health_status.dart';
 import '../api/scout_models.dart';
 import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
+import 'common.dart';
+import 'focus_ring.dart';
 import 'karum_logo.dart';
 
 /// The app header shared by every route.
@@ -56,36 +58,52 @@ class KarumHeader extends StatelessWidget {
         child: Row(
           children: [
             if (showBack) ...[
-              IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                tooltip: 'Back',
-                icon: const Icon(Icons.arrow_back_rounded, size: 20),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: 'Back',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: Icons.arrow_back_rounded,
+                  iconSize: 20,
+                ),
               ),
               const SizedBox(width: KarumSpacing.xs),
             ],
-            Semantics(
-              label: 'Karum home',
-              button: true,
-              child: InkWell(
-                onTap: () =>
-                    Navigator.of(context)
-                        .pushNamedAndRemoveUntil('/', (route) => false),
-                borderRadius: BorderRadius.circular(KarumRadius.control),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: KarumLogo(height: compact ? 24 : 28),
+            FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: Semantics(
+                label: 'Karum home',
+                button: true,
+                child: InkWell(
+                  onTap: () =>
+                      Navigator.of(context)
+                          .pushNamedAndRemoveUntil('/', (route) => false),
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: KarumLogo(height: compact ? 24 : 28),
+                  ),
                 ),
               ),
             ),
             const Spacer(),
             if (!hideNav && onNewScout != null)
-              TextButton.icon(
-                onPressed: onNewScout,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('New scout'),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: TextButton.icon(
+                  onPressed: onNewScout,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('New scout'),
+                ),
               ),
             if (!hideNav && onStatus != null)
-              TextButton(onPressed: onStatus, child: const Text('Status')),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: TextButton(
+                  onPressed: onStatus,
+                  child: const Text('Status'),
+                ),
+              ),
             for (final action in actions) ...[
               const SizedBox(width: KarumSpacing.sm),
               action,

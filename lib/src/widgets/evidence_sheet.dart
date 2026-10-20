@@ -4,6 +4,7 @@ import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
 import '../util/links.dart';
 import 'common.dart';
+import 'focus_ring.dart';
 
 /// Opens the evidence drawer for a campaign, optionally scoped to one door.
 Future<void> showEvidenceSheet(
@@ -79,10 +80,14 @@ class _EvidenceDialog extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: 'Close evidence',
-                    icon: const Icon(Icons.close_rounded),
+                  FocusRing(
+                    borderRadius: BorderRadius.circular(KarumRadius.control),
+                    child: NamedIconButton(
+                      key: const Key('evidence-close'),
+                      label: 'Close evidence',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icons.close_rounded,
+                    ),
                   ),
                 ],
               ),

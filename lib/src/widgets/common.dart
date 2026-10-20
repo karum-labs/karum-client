@@ -3,6 +3,54 @@ import 'package:flutter/material.dart';
 import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
 
+/// An icon button that carries an accessible name.
+///
+/// Flutter's [IconButton] puts its tooltip in the *tooltip* field of the
+/// semantics node, not in the label, and a tooltip only reaches the semantics
+/// tree while it is on screen. An icon button with only a tooltip is
+/// therefore announced as an unlabelled button. The name here goes on the
+/// icon, which is what the semantics tree actually reads.
+class NamedIconButton extends StatelessWidget {
+  const NamedIconButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.onPressed,
+    this.tooltip,
+    this.busy = false,
+    this.iconSize,
+  });
+
+  /// The control's accessible name.
+  final String label;
+
+  /// The icon the button draws.
+  final IconData icon;
+
+  /// What the button does.
+  final VoidCallback? onPressed;
+
+  /// The pointer tooltip. Defaults to [label].
+  final String? tooltip;
+
+  /// Whether the button shows a spinner instead of its icon.
+  final bool busy;
+
+  /// The icon's size.
+  final double? iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip ?? label,
+      icon: busy
+          ? CircularProgressIndicator(strokeWidth: 2, semanticsLabel: label)
+          : Icon(icon, size: iconSize, semanticLabel: label),
+    );
+  }
+}
+
 /// A small uppercase section label.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key, this.trailing});
@@ -13,20 +61,28 @@ class SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            text.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: palette.mute,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.9,
-            ),
-          ),
-        ),
-        ?trailing,
-      ],
+    final label = Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: palette.mute,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.9,
+      ),
+    );
+    final Widget? trailingWidget = trailing;
+    if (trailingWidget == null) return label;
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          // An Expanded needs a bounded width to fill. Where the width is not
+          // bounded — inside a scroll view that sizes itself to its content,
+          // for instance — the label takes its own width instead, and the
+          // trailing widget follows it.
+          if (constraints.hasBoundedWidth) Expanded(child: label) else label,
+          const SizedBox(width: KarumSpacing.sm),
+          trailingWidget,
+        ],
+      ),
     );
   }
 }
