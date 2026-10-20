@@ -981,7 +981,7 @@ class _Hero extends StatelessWidget {
               border: Border.all(color: palette.brand.withValues(alpha: 0.22)),
             ),
             child: Text(
-              'THE TENANT-MIX LEASING AGENT',
+              'THE BRAND-OPERATED EXPANSION AGENT',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: palette.brand,
                 fontWeight: FontWeight.w700,
@@ -1258,7 +1258,7 @@ class _Footer extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            'Karum · tenant mix, not vibes.',
+            'Karum · the right doors, not the wrong ones.',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: palette.mute),
           ),

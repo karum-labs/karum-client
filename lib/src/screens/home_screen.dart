@@ -6,12 +6,12 @@ import '../theme/brand_tokens.dart';
 import '../widgets/async_states.dart';
 import '../widgets/karum_logo.dart';
 
-/// The judge-facing landing screen.
+/// The status screen.
 ///
-/// For this scaffold it fetches `GET /health` from the gateway and renders the
-/// operational mode. It exercises the loading / empty / error state trio that
-/// every Karum screen will reuse; the intake form and shortlist board land in a
-/// later pass.
+/// It fetches `GET /health` from the gateway and renders the operational mode.
+/// It exercises the loading / empty / error state trio that every Karum screen
+/// reuses; the seed builder, the door board, and the pitch live in their own
+/// screens.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.client});
 
@@ -125,7 +125,7 @@ class _HealthView extends StatelessWidget {
               ),
               const SizedBox(height: KarumSpacing.md),
               Text(
-                'A wrong tenant is a multi-year mistake.',
+                'Brands lose the account by knocking on the wrong door.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

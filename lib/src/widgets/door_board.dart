@@ -7,7 +7,7 @@ import 'common.dart';
 import 'evidence_sheet.dart';
 import 'focus_ring.dart';
 
-/// The shortlist board: recommended doors, the skip list, and the
+/// The door board: recommended doors, the skip list, and the
 /// explainability tab.
 class DoorBoard extends StatefulWidget {
   const DoorBoard({

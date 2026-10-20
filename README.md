@@ -5,7 +5,7 @@
   <img alt="Karum" src="assets/brand/social/readme-banner-1600x400.png">
 </picture>
 
-The **Flutter client** for [Karum](https://github.com/karum-labs/karum-infra#readme) — the tenant-mix leasing agent. Flutter **web** is the judge-facing target, and the same screens run on desktop.
+The **Flutter client** for [Karum](https://github.com/karum-labs/karum-infra#readme) — the brand-operated expansion agent. Flutter **web** is the judge-facing target, and the same screens run on desktop.
 
 Part of the five-repo Karum layout:
 

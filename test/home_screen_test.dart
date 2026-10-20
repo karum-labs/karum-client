@@ -43,7 +43,7 @@ void main() {
     expect(find.byType(LoadingState), findsNothing);
     // The landing tagline is unique to the body (the AppBar title is separate).
     expect(
-      find.text('A wrong tenant is a multi-year mistake.'),
+      find.text('Brands lose the account by knocking on the wrong door.'),
       findsOneWidget,
     );
     expect(find.textContaining('Fixture mode'), findsOneWidget);
