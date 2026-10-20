@@ -6,11 +6,13 @@ import 'src/api/health_status.dart';
 import 'src/app/app_scope.dart';
 import 'src/app/routes.dart';
 import 'src/auth/session_storage.dart';
+import 'src/config/app_flags.dart';
 import 'src/screens/door_pitch_screen.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/judge_entry_screen.dart';
 import 'src/screens/landing_screen.dart';
 import 'src/screens/not_found_screen.dart';
+import 'src/screens/register_screen.dart';
 import 'src/screens/workspace_screen.dart';
 import 'src/theme/app_theme.dart';
 
@@ -26,13 +28,23 @@ void main() {
 
 /// Root widget: owns the gateway client, health snapshot, theme, and routes.
 class KarumApp extends StatefulWidget {
-  const KarumApp({super.key, this.client, this.initialRoute});
+  const KarumApp({
+    super.key,
+    this.client,
+    this.initialRoute,
+    this.showJudgesBanner,
+  });
 
   /// Injectable client for widget tests.
   final GatewayClient? client;
 
   /// Optional initial route for tests.
   final String? initialRoute;
+
+  /// Test override for the login-screen judges banner.
+  ///
+  /// Null uses [AppFlags.showJudgesBanner].
+  final bool? showJudgesBanner;
 
   @override
   State<KarumApp> createState() => _KarumAppState();
@@ -46,7 +58,6 @@ class _KarumAppState extends State<KarumApp> {
   bool _healthLoading = true;
   AuthSession? _session;
   bool _authResolving = true;
-  bool _judgeAttempted = false;
 
   @override
   void initState() {
@@ -101,27 +112,12 @@ class _KarumAppState extends State<KarumApp> {
         _healthError = null;
         _healthLoading = false;
       });
-      await _maybeAutoJudge(health);
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _healthError = error;
         _healthLoading = false;
       });
-    }
-  }
-
-  /// Signs into the preseeded judge account once, silently. The public demo is
-  /// already usable, so a failure only hides the judge banner.
-  Future<void> _maybeAutoJudge(HealthStatus health) async {
-    if (_judgeAttempted || _session != null || !health.hackathonMode) return;
-    _judgeAttempted = true;
-    try {
-      final session = await _client.judgeLogin();
-      if (!mounted) return;
-      _setSession(session);
-    } catch (_) {
-      // The login page remains available; the demo never blocks on this.
     }
   }
 
@@ -133,6 +129,15 @@ class _KarumAppState extends State<KarumApp> {
 
   Future<void> _judgeSignIn() async {
     final session = await _client.judgeLogin();
+    if (!mounted) return;
+    _setSession(session);
+  }
+
+  Future<void> _register({
+    required String email,
+    required String password,
+  }) async {
+    final session = await _client.register(email: email, password: password);
     if (!mounted) return;
     _setSession(session);
   }
@@ -180,6 +185,7 @@ class _KarumAppState extends State<KarumApp> {
         authResolving: _authResolving,
         signIn: _signIn,
         judgeSignIn: _judgeSignIn,
+        register: _register,
         signOut: _signOut,
         child: child ?? const SizedBox.shrink(),
       ),
@@ -198,7 +204,13 @@ class _KarumAppState extends State<KarumApp> {
       return _page(HomeScreen(client: _client), settings.name ?? '/status');
     }
     if (segments.length == 1 && segments[0] == 'login') {
-      return _page(const JudgeEntryScreen(), settings.name ?? '/login');
+      return _page(
+        JudgeEntryScreen(showJudgesBanner: widget.showJudgesBanner),
+        settings.name ?? '/login',
+      );
+    }
+    if (segments.length == 1 && segments[0] == 'register') {
+      return _page(const RegisterScreen(), settings.name ?? '/register');
     }
 
     // /scout/:jobId/doors/:doorId

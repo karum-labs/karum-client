@@ -167,9 +167,9 @@ class ModeBanner extends StatelessWidget {
   }
 }
 
-/// The judge-mode banner. It is transparent about the automatic judge session
-/// and always offers the anonymous path, so the demo never becomes a login
-/// wall. When the gateway flag is off, it renders nothing.
+/// A signed-in strip. It stays quiet for anonymous visitors, so the public
+/// demo never grows a login wall. The hackathon judges banner lives on the
+/// login screen and follows the SHOW_JUDGES_BANNER build flag.
 class JudgeBanner extends StatelessWidget {
   const JudgeBanner({super.key});
 
@@ -177,44 +177,26 @@ class JudgeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final scope = AppScope.maybeOf(context);
-    if (scope == null || !scope.hackathonMode) {
+    final session = scope?.session;
+    if (scope == null || session == null) {
       return const SizedBox.shrink();
     }
 
-    final session = scope.session;
-    if (session != null) {
-      final name = session.account.displayName.isEmpty
-          ? session.account.email
-          : session.account.displayName;
-      return _Banner(
-        background: palette.brand.withValues(alpha: 0.12),
-        foreground: palette.ink,
-        icon: Icons.verified_user_outlined,
-        title: session.account.isJudge ? 'Judge mode' : 'Signed in',
-        message: session.account.isJudge
-            ? 'Signed in as $name for this session. Samples and free entry '
-                  'stay public.'
-            : 'Signed in as $name. The public demo stays open.',
-        action: TextButton(
-          onPressed: () {
-            scope.signOut();
-          },
-          child: const Text('Sign out'),
-        ),
-      );
-    }
-
+    final name = session.account.displayName.isEmpty
+        ? session.account.email
+        : session.account.displayName;
+    final detail = 'Signed in as $name. The public demo stays open.';
     return _Banner(
       background: palette.brand.withValues(alpha: 0.12),
       foreground: palette.ink,
-      icon: Icons.badge_outlined,
-      title: 'Judge mode',
-      message:
-          'Hackathon judge access is on. Sign in for an attributed session, '
-          'or keep exploring anonymously.',
+      icon: Icons.verified_user_outlined,
+      title: session.account.isJudge ? 'Judge mode' : 'Signed in',
+      message: detail,
       action: TextButton(
-        onPressed: () => Navigator.of(context).pushNamed('/login'),
-        child: const Text('Judge sign-in'),
+        onPressed: () {
+          scope.signOut();
+        },
+        child: const Text('Sign out'),
       ),
     );
   }

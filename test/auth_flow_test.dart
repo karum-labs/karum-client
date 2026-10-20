@@ -55,6 +55,17 @@ class _AuthGateway {
         }
         return _json(_session());
       }
+      if (request.method == 'POST' && path == '/api/v1/auth/register') {
+        return _json({
+          'token': 'tok-owner',
+          'account': {
+            'id': 'acct-owner',
+            'email': 'owner@example.com',
+            'display_name': 'owner',
+            'is_judge': false,
+          },
+        }, 201);
+      }
       if (request.method == 'POST' && path == '/api/v1/auth/login') {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         if (body['password'] != 'secret') {
@@ -88,7 +99,7 @@ void _largeWindow(WidgetTester tester) {
 void main() {
   setUp(() => writeSessionToken(null));
 
-  testWidgets('hackathon mode signs the judge in without a login wall', (
+  testWidgets('the public demo stays anonymous until someone signs in', (
     tester,
   ) async {
     _largeWindow(tester);
@@ -101,42 +112,69 @@ void main() {
       find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
       findsOneWidget,
     );
-    expect(find.textContaining('Signed in as Karum Judge'), findsOneWidget);
-    expect(find.textContaining('Judge mode'), findsOneWidget);
+    expect(find.textContaining('Signed in as'), findsNothing);
+    expect(find.textContaining('Judge mode'), findsNothing);
+    expect(
+      gateway.requests.any((r) => r.url.path == '/api/v1/auth/judge'),
+      isFalse,
+    );
   });
 
-  testWidgets(
-    'hackathon mode off leaves the demo anonymous and hides the banner',
-    (tester) async {
-      _largeWindow(tester);
-      final gateway = _AuthGateway(hackathonMode: false);
-
-      await tester.pumpWidget(KarumApp(client: gateway.client()));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Signed in as Karum Judge'), findsNothing);
-      expect(find.textContaining('Judge mode'), findsNothing);
-      expect(
-        gateway.requests.any((r) => r.url.path == '/api/v1/auth/judge'),
-        isFalse,
-      );
-    },
-  );
-
-  testWidgets('email and password login opens the demo', (tester) async {
+  testWidgets('the judges banner opens the preseeded demo', (tester) async {
     _largeWindow(tester);
-    final gateway = _AuthGateway(hackathonMode: false);
+    final gateway = _AuthGateway(hackathonMode: true);
 
     await tester.pumpWidget(
       KarumApp(client: gateway.client(), initialRoute: '/login'),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to Karum.'), findsOneWidget);
+    expect(find.text('Hackathon judges'), findsOneWidget);
+    expect(find.textContaining('pre-seeded demo'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Open demo'));
+    await tester.pumpAndSettle();
+
+    expect(
+      gateway.requests.any((r) => r.url.path == '/api/v1/auth/judge'),
+      isTrue,
+    );
+    expect(find.textContaining('Signed in as Karum Judge'), findsOneWidget);
+  });
+
+  testWidgets('the judges banner hides when the build flag is off', (
+    tester,
+  ) async {
+    _largeWindow(tester);
+    final gateway = _AuthGateway(hackathonMode: true);
+
+    await tester.pumpWidget(
+      KarumApp(
+        client: gateway.client(),
+        initialRoute: '/login',
+        showJudgesBanner: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Hackathon judges'), findsNothing);
+    expect(find.text('Open demo'), findsNothing);
+  });
+
+  testWidgets('email and password login opens the demo', (tester) async {
+    _largeWindow(tester);
+    final gateway = _AuthGateway(hackathonMode: false);
+
+    await tester.pumpWidget(
+      KarumApp(
+        client: gateway.client(),
+        initialRoute: '/login',
+        showJudgesBanner: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome back'), findsOneWidget);
     final fields = find.byType(TextFormField);
     expect(fields, findsNWidgets(2));
     await tester.enterText(fields.at(0), 'judge@karum.demo');
@@ -144,10 +182,11 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
-    expect(
-      gateway.requests.any((r) => r.url.path == '/api/v1/auth/login'),
-      isTrue,
+    final login = gateway.requests.where(
+      (r) => r.url.path == '/api/v1/auth/login',
     );
+    expect(login, isNotEmpty);
+    expect(jsonDecode(login.first.body)['email'], 'judge@karum.demo');
     expect(
       find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
       findsOneWidget,
@@ -161,7 +200,11 @@ void main() {
     final gateway = _AuthGateway(hackathonMode: false);
 
     await tester.pumpWidget(
-      KarumApp(client: gateway.client(), initialRoute: '/login'),
+      KarumApp(
+        client: gateway.client(),
+        initialRoute: '/login',
+        showJudgesBanner: false,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -172,23 +215,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('email or password is incorrect'), findsOneWidget);
-    expect(find.text('Sign in to Karum.'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('a failed auto judge login leaves the demo anonymous', (
-    tester,
-  ) async {
+  testWidgets('a failed demo sign-in stays on the login page', (tester) async {
     _largeWindow(tester);
     final gateway = _AuthGateway(hackathonMode: true, judgeStatus: 503);
 
-    await tester.pumpWidget(KarumApp(client: gateway.client()));
+    await tester.pumpWidget(
+      KarumApp(client: gateway.client(), initialRoute: '/login'),
+    );
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
-      findsOneWidget,
+    await tester.tap(find.widgetWithText(FilledButton, 'Open demo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('judge access is unavailable'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('creating an account signs in', (tester) async {
+    _largeWindow(tester);
+    final gateway = _AuthGateway(hackathonMode: false);
+
+    await tester.pumpWidget(
+      KarumApp(
+        client: gateway.client(),
+        initialRoute: '/login',
+        showJudgesBanner: false,
+      ),
     );
-    expect(find.textContaining('Hackathon judge access is on'), findsOneWidget);
-    expect(find.text('Sign in to Karum.'), findsNothing);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create an account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create an account'), findsWidgets);
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'owner@example.com');
+    await tester.enterText(fields.at(1), 'password1');
+    await tester.enterText(fields.at(2), 'password1');
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Create account'),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await tester.pumpAndSettle();
+
+    final created = gateway.requests.where(
+      (r) => r.url.path == '/api/v1/auth/register',
+    );
+    expect(created, isNotEmpty);
+    final body = jsonDecode(created.first.body) as Map<String, dynamic>;
+    expect(body['email'], 'owner@example.com');
+    expect(body['password'], 'password1');
+    expect(find.textContaining('Signed in as owner'), findsOneWidget);
   });
 }

@@ -128,6 +128,22 @@ class GatewayClient {
     return session;
   }
 
+  /// Creates an account from an email and password and signs it in.
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/auth/register',
+      body: {'email': email, 'password': password},
+      timeout: const Duration(seconds: 20),
+    );
+    final session = _parse(response, AuthSession.fromJson);
+    _token = session.token;
+    return session;
+  }
+
   /// Resolves the account attached to the current token.
   Future<AuthAccount> fetchMe() async {
     final response = await _get(
@@ -410,6 +426,8 @@ class GatewayClient {
 
     final resolved = switch (status) {
       429 => 'The gateway is rate-limiting requests (429). Wait a few seconds and try again.',
+      409 when code == 'email_taken' =>
+        message ?? 'An account with this email already exists.',
       409 => 'This request was already submitted with a different body. Reload the form and try again.',
       422 when code == 'ambiguous' =>
         message ?? 'The city query is ambiguous. Choose a candidate.',

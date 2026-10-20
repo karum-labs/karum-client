@@ -43,7 +43,7 @@ class AuthSession {
   final AuthAccount account;
   final DateTime? expiresAt;
 
-  /// Builds a session from `POST /api/v1/auth/login` or `/auth/judge`.
+  /// Builds a session from login, judge sign-in, or registration.
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     final token = json['token'];
     if (token is! String || token.isEmpty) {

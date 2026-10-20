@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../api/auth_models.dart';
 import '../api/gateway_client.dart';
 import '../api/health_status.dart';
+import '../config/app_flags.dart';
 
 /// The gateway client, health snapshot, and judge session shared by every route.
 ///
@@ -21,6 +22,7 @@ class AppScope extends InheritedWidget {
     required this.authResolving,
     required this.signIn,
     required this.judgeSignIn,
+    required this.register,
     required this.signOut,
     required super.child,
   });
@@ -42,8 +44,8 @@ class AppScope extends InheritedWidget {
 
   /// True when the gateway reports `hackathon_mode=true`.
   ///
-  /// The gateway owns this flag; the client never guesses it from a build
-  /// define. The public demo stays available when it is false.
+  /// This enables the passwordless demo route. The login banner is a separate
+  /// client flag, [AppFlags.showJudgesBanner].
   final bool hackathonMode;
 
   /// The current session, or null when exploring anonymously.
@@ -57,6 +59,10 @@ class AppScope extends InheritedWidget {
 
   /// Signs into the preseeded judge account, throwing when disabled.
   final Future<void> Function() judgeSignIn;
+
+  /// Creates an account from an email and password and signs it in.
+  final Future<void> Function({required String email, required String password})
+  register;
 
   /// Revokes the session and returns to the anonymous demo.
   final Future<void> Function() signOut;

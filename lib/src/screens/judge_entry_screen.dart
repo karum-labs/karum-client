@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../api/gateway_client.dart';
 import '../app/app_scope.dart';
+import '../config/app_flags.dart';
 import '../theme/brand_tokens.dart';
-import '../widgets/karum_chrome.dart';
+import '../widgets/auth_scaffold.dart';
 import '../widgets/karum_logo.dart';
 
-/// Email/password sign-in, plus the optional one-click hackathon judge path.
+/// Email/password sign-in, plus the optional hackathon judges banner.
 ///
-/// The public demo never redirects here. A session only attributes a scout to an
-/// account; the preset and free-entry paths remain available anonymously.
+/// The public demo never redirects here. A session only attributes a scout to
+/// an account; the preset and free-entry paths remain available anonymously.
 class JudgeEntryScreen extends StatefulWidget {
-  const JudgeEntryScreen({super.key, this.hackathonMode});
+  const JudgeEntryScreen({super.key, this.showJudgesBanner});
 
-  /// Test override for the gateway-owned hackathon flag.
-  final bool? hackathonMode;
+  /// Test override for [AppFlags.showJudgesBanner].
+  final bool? showJudgesBanner;
 
   @override
   State<JudgeEntryScreen> createState() => _JudgeEntryScreenState();
@@ -26,6 +27,8 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  bool get _showBanner => widget.showJudgesBanner ?? AppFlags.showJudgesBanner;
 
   @override
   void dispose() {
@@ -66,7 +69,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
     if (_busy) return;
     final scope = AppScope.maybeOf(context);
     if (scope == null) {
-      setState(() => _error = 'Judge access is unavailable in this build.');
+      setState(() => _error = 'Demo access is unavailable in this build.');
       return;
     }
     setState(() {
@@ -81,7 +84,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Judge access failed. Use email and password instead.',
+          () => _error = 'Demo access failed. Use email and password instead.',
         );
       }
     } finally {
@@ -105,106 +108,57 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final scope = AppScope.maybeOf(context);
-    final enabled = widget.hackathonMode ?? scope?.hackathonMode ?? false;
     final session = scope?.session;
     final resolving = scope?.authResolving ?? false;
 
-    return Scaffold(
-      body: Column(
-        children: [
-          const KarumHeader(),
-          JudgeBanner(),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(KarumSpacing.page),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 470),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: AutofillGroup(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const KarumLogo(height: 34),
-                            const SizedBox(height: KarumSpacing.xl),
-                            if (enabled)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: palette.brand.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    KarumRadius.pill,
-                                  ),
-                                ),
-                                child: Text(
-                                  'HACKATHON MODE · JUDGE SIGN-IN',
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: palette.brand,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.8,
-                                      ),
-                                ),
-                              ),
-                            const SizedBox(height: KarumSpacing.lg),
-                            Text(
-                              session == null
-                                  ? 'Sign in to Karum.'
-                                  : 'You are signed in.',
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
-                            const SizedBox(height: KarumSpacing.sm),
-                            Text(
-                              session == null
-                                  ? 'A session attributes your scouts to your '
-                                        'account. The sample campaigns and the '
-                                        'free-entry builder stay available '
-                                        'without signing in.'
-                                  : 'The public demo is still open. Continue '
-                                        'to the seed builder or sign out to '
-                                        'return to an anonymous session.',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: palette.mute),
-                            ),
-                            const SizedBox(height: KarumSpacing.xl),
-                            if (resolving && session == null)
-                              const Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: KarumSpacing.lg,
-                                ),
-                                child: LinearProgressIndicator(minHeight: 2),
-                              ),
-                            if (session != null)
-                              _SignedInPanel(
-                                email: session.account.email,
-                                displayName: session.account.displayName,
-                                isJudge: session.account.isJudge,
-                                busy: _busy,
-                                onContinue: _openDemo,
-                                onSignOut: _signOut,
-                              )
-                            else
-                              _buildForm(context, enabled: enabled),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+    return AuthScaffold(
+      child: AutofillGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const KarumLogo(height: 34),
+            if (session == null && _showBanner) ...[
+              const SizedBox(height: KarumSpacing.xl),
+              _JudgesBanner(busy: _busy, onOpen: _judgeSignIn),
+            ],
+            const SizedBox(height: KarumSpacing.xl),
+            Text(
+              session == null ? 'Welcome back' : 'You are signed in.',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-          ),
-        ],
+            const SizedBox(height: KarumSpacing.sm),
+            Text(
+              session == null
+                  ? 'Sign in with your email and password.'
+                  : 'The public demo is still open. Continue to the seed '
+                        'builder or sign out.',
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.mute),
+            ),
+            const SizedBox(height: KarumSpacing.xl),
+            if (resolving && session == null)
+              const Padding(
+                padding: EdgeInsets.only(bottom: KarumSpacing.lg),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            if (session != null)
+              _SignedInPanel(
+                email: session.account.email,
+                displayName: session.account.displayName,
+                isJudge: session.account.isJudge,
+                busy: _busy,
+                onContinue: _openDemo,
+                onSignOut: _signOut,
+              )
+            else
+              _buildForm(context),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context, {required bool enabled}) {
+  Widget _buildForm(BuildContext context) {
     final palette = KarumPalette.of(context);
     return Form(
       key: _formKey,
@@ -275,29 +229,71 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
               label: Text(_busy ? 'Signing in…' : 'Sign in'),
             ),
           ),
-          if (enabled) ...[
-            const SizedBox(height: KarumSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : _judgeSignIn,
-                icon: const Icon(Icons.badge_outlined, size: 18),
-                label: const Text('Use judge access'),
-              ),
-            ),
-            const SizedBox(height: KarumSpacing.xs),
-            Text(
-              'Judge access is a credential-free session for the preseeded '
-              'account. It is only enabled while the gateway reports '
-              'HACKATHON_MODE=true.',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: palette.mute),
-            ),
-          ],
           const SizedBox(height: KarumSpacing.md),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'New here?',
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.mute),
+              ),
+              TextButton(
+                onPressed: _busy
+                    ? null
+                    : () => Navigator.of(context).pushNamed('/register'),
+                child: const Text('Create an account'),
+              ),
+            ],
+          ),
           TextButton(
             onPressed: _busy ? null : _openDemo,
             child: const Text('Continue without signing in'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JudgesBanner extends StatelessWidget {
+  const _JudgesBanner({required this.busy, required this.onOpen});
+
+  final bool busy;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(KarumSpacing.lg),
+      decoration: BoxDecoration(
+        color: palette.brand.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(KarumRadius.control),
+        border: Border.all(color: palette.brand.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Hackathon judges',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: KarumSpacing.xs),
+          Text(
+            'Skip creating an account. Open the pre-seeded demo, with the '
+            'sample campaigns already attached.',
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: palette.mute),
+          ),
+          const SizedBox(height: KarumSpacing.md),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              onPressed: busy ? null : onOpen,
+              child: Text(busy ? 'Opening…' : 'Open demo'),
+            ),
           ),
         ],
       ),
