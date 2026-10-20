@@ -156,6 +156,9 @@ abstract final class PresetCatalog {
       Sku(id: 'sola-spritz', name: 'Sola Mezcal Spritz'),
     ],
     categoryTags: ['urn:tag:genre:place:restaurant:bar'],
+    // The doors were captured at 8 km. Every preset pins its radius so the
+    // mirror cannot silently fall back to the default.
+    radiusMeters: 8000,
     point: GeoPoint(30.2672, -97.7431),
   );
 
@@ -199,6 +202,7 @@ abstract final class PresetCatalog {
       'urn:tag:genre:place:art_gallery',
       'urn:tag:genre:place:ceramics',
     ],
+    radiusMeters: 8000,
     point: GeoPoint(40.7172, -73.9566),
   );
 
@@ -216,6 +220,7 @@ abstract final class PresetCatalog {
       Sku(id: 'subko-coffee', name: 'Subko Single-Origin Coffee'),
     ],
     categoryTags: ['urn:tag:genre:place:restaurant:cafe'],
+    radiusMeters: 8000,
     point: GeoPoint(18.93, 72.83),
   );
 
