@@ -35,16 +35,34 @@ The login screen's hackathon banner follows `SHOW_JUDGES_BANNER`. It is on in de
 
 The hosted demo is https://karum-512016.web.app. `make demo-refresh` in `karum-infra` builds this repo with `GATEWAY_URL=https://35.244.55.185.sslip.io` and deploys `build/web` to that Firebase Hosting site.
 
-## What's in the scaffold
+## What's in the app
 
-- **`lib/src/config/app_config.dart`** — reads `GATEWAY_URL` from `--dart-define`.
-- **`lib/src/theme/brand_tokens.dart`** — the official brand values from the guide: colour pairs, type styles, spacing, radii, and elevation, each tagged official, derived, or implementation-defined. See [BRAND.md](BRAND.md).
-- **`lib/src/theme/app_theme.dart`** — Material 3 light and dark themes built from those tokens: colour scheme, lane palette extension, type scale, cards, chips, buttons.
-- **`lib/src/widgets/karum_logo.dart`** — the official lockup and mark, drawn with `flutter_svg`; the header lockup collapses to the mark below 480 px.
-- **`lib/src/api/gateway_client.dart`** — HTTP client for the gateway, with typed `GatewayException`s that map non-200 responses to specific copy.
-- **`lib/src/api/health_status.dart`** — parsed `GET /health` model, including the `live` / `fixture` / `degraded` mode.
-- **`lib/src/screens/home_screen.dart`** — landing screen wired to `/health`, with a mode banner.
-- **`lib/src/widgets/async_states.dart`** — reusable loading / empty / error state widgets every screen shares.
+The repo is the full judge journey, not a scaffold. Screen by screen:
+
+- **Seed builder** (`landing_screen.dart`) — the three locked presets and free
+  entry: brand seed, city, mode, radius, category tags, and SKUs. Ambiguous
+  cities ask for a point instead of guessing, and a seed is confirmed against
+  resolved entity ids before `POST /api/v1/scout`.
+- **Live trace** (`workspace_screen.dart`) — Server-Sent Events stages as the
+  pipeline runs, with a polling fallback when the stream drops.
+- **Map** (`widgets/map_panel.dart`) — door pins, skip pins, and locality
+  polygons from the same Qloo payload the board shows.
+- **Door board** (`widgets/door_board.dart`) — the ranked doors, the skip list
+  with the gateway's reason codes and reason detail, and the LLM-only baseline
+  for comparison. The evidence drawer (`widgets/evidence_sheet.dart`) opens
+  every score's inputs and cites the Qloo calls behind them.
+- **Pitch** (`door_pitch_screen.dart`) — the shopkeeper script, battlecard,
+  recommended SKU, and the mode-specific paragraph, plus the run-sheet and
+  site-brief actions.
+- **Provenance everywhere** — each number carries a source badge (Qloo fact,
+  Google fact, model inference, ungrounded LLM), and the client renders the
+  gateway's rank and reasons as-is: no client-side re-sorting, no re-derived
+  scores.
+
+It also carries the brand foundation (`lib/src/theme/brand_tokens.dart` and
+`app_theme.dart`, from the official guide — see [BRAND.md](BRAND.md)), the
+judge sign-in flow, and the documented keyboard path and contrast table in
+[ACCESSIBILITY.md](ACCESSIBILITY.md).
 
 ## Health & mode banner
 

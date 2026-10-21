@@ -711,19 +711,15 @@ class _LandingScreenState extends State<LandingScreen> {
               ),
               const SizedBox(height: KarumSpacing.lg),
             ],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Scores are Qloo associations, not foot traffic. '
-                    'Places facts and menu citations stay labelled.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: palette.mute),
-                  ),
-                ),
-                const SizedBox(width: KarumSpacing.lg),
-                FocusRing(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final note = Text(
+                  'Scores are Qloo associations, not foot traffic. '
+                  'Places facts and menu citations stay labelled.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.mute),
+                );
+                final submit = FocusRing(
                   borderRadius: BorderRadius.circular(KarumRadius.control),
                   child: FilledButton.icon(
                     key: const Key('free-entry-submit'),
@@ -737,8 +733,29 @@ class _LandingScreenState extends State<LandingScreen> {
                         : const Icon(Icons.arrow_forward_rounded, size: 18),
                     label: Text(_submitting ? 'Starting…' : 'Run this scout'),
                   ),
-                ),
-              ],
+                );
+                // Below the official 480 px breakpoint the button drops onto
+                // its own line: side by side, the pair overflows a phone
+                // column instead of wrapping.
+                if (constraints.maxWidth < KarumLayout.markOnlyBelow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      note,
+                      const SizedBox(height: KarumSpacing.md),
+                      submit,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: note),
+                    const SizedBox(width: KarumSpacing.lg),
+                    submit,
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -946,8 +963,11 @@ class _Hero extends StatelessWidget {
       style: Theme.of(context).textTheme.bodyLarge
           ?.copyWith(fontSize: 17, color: palette.mute, height: 1.55),
     );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
+    // A Wrap rather than a fixed row: at 320 px the two buttons do not fit
+    // on one line, and a Row would overflow the page instead of wrapping.
+    final actions = Wrap(
+      spacing: KarumSpacing.md,
+      runSpacing: KarumSpacing.sm,
       children: [
         FocusRing(
           borderRadius: BorderRadius.circular(KarumRadius.control),
@@ -957,7 +977,6 @@ class _Hero extends StatelessWidget {
             label: const Text('Load a sample'),
           ),
         ),
-        const SizedBox(width: KarumSpacing.md),
         FocusRing(
           borderRadius: BorderRadius.circular(KarumRadius.control),
           child: TextButton(
@@ -1042,16 +1061,22 @@ class _Proof extends StatelessWidget {
           color: palette.brand,
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge
-              ?.copyWith(color: palette.ink),
+        // The two texts share the line at desktop widths and wrap onto it at
+        // phone widths, so a long proof never overflows the page.
+        Flexible(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(color: palette.ink),
+          ),
         ),
         const SizedBox(width: 4),
-        Text(
-          detail,
-          style: Theme.of(context).textTheme.bodySmall
-              ?.copyWith(color: palette.mute),
+        Flexible(
+          child: Text(
+            detail,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.mute),
+          ),
         ),
       ],
     );

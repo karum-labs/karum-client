@@ -123,10 +123,18 @@ class SourceBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: palette.mute, fontWeight: FontWeight.w600),
+          // The badge yields before any row it sits in does: in a tight
+          // parent ("Model inference" next to a score) it ellipsizes instead
+          // of striping the layout, and the Semantics label above keeps the
+          // full text for screen readers.
+          Flexible(
+            child: Text(
+              label,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: palette.mute, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

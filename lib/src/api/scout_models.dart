@@ -529,6 +529,7 @@ class SkipItem {
     required this.id,
     required this.name,
     required this.reason,
+    this.reasonDetail = '',
     this.rawAffinity = 0,
     this.floor = 0,
     this.competitorCount = 0,
@@ -539,6 +540,12 @@ class SkipItem {
   final String id;
   final String name;
   final String reason;
+
+  /// The gateway's plain-English detail for [reason], such as
+  /// "0.8160 below the returned floor 0.8386". Empty when the gateway did
+  /// not attach one.
+  final String reasonDetail;
+
   final double rawAffinity;
   final double floor;
   final int competitorCount;
@@ -572,6 +579,7 @@ class SkipItem {
     id: _string(json['id']),
     name: _string(json['name']),
     reason: _string(json['reason'], fallback: 'low_affinity'),
+    reasonDetail: _string(json['reason_detail']),
     rawAffinity: _double(json['raw_affinity']) ?? 0,
     floor: _double(json['floor']) ?? 0,
     competitorCount: _int(json['competitor_count']),

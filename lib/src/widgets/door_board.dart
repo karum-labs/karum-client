@@ -367,18 +367,20 @@ class _DoorCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      door.compositePercent == null
-                          ? '—'
-                          : '${door.compositePercent!.round()}',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(color: palette.ink, fontSize: 30),
-                    ),
-                    const SourceBadge(source: 'model_inference'),
-                  ],
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        door.compositePercent == null
+                            ? '—'
+                            : '${door.compositePercent!.round()}',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(color: palette.ink, fontSize: 30),
+                      ),
+                      const SourceBadge(source: 'model_inference'),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -799,6 +801,16 @@ class _SkipTab extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: KarumSpacing.xs),
+              // The gateway's own explanation of the skip: the numbers behind
+              // the reason code. Empty when the gateway did not send one.
+              if (skip.reasonDetail.isNotEmpty) ...[
+                Text(
+                  skip.reasonDetail,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.mute),
+                ),
+                const SizedBox(height: KarumSpacing.xs),
+              ],
               Text(
                 skip.reasonLabel,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(

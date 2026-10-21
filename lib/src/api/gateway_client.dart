@@ -183,8 +183,18 @@ class GatewayClient {
     }
   }
 
-  /// Creates a scout. The gateway returns 202 while the pipeline is still
-  /// running, or 201 when the stored run completed synchronously.
+  /// Creates a scout.
+  ///
+  /// The gateway answers with one of three 2xx statuses:
+  ///
+  /// - **202** — the pipeline was started and is still running.
+  /// - **201** — the run completed synchronously and the response already
+  ///   carries the finished campaign.
+  /// - **200** — the gateway served a stored preset replay, so the run was
+  ///   already done before this request arrived.
+  ///
+  /// Any 2xx is accepted, so the client does not branch on which one came
+  /// back.
   Future<ScoutJob> createScout(
     ScoutRequest request, {
     String? idempotencyKey,
@@ -229,6 +239,9 @@ class GatewayClient {
 
   /// Streams trace events after [cursor]. The gateway closes the stream when
   /// the job reaches a terminal state.
+  ///
+  /// This path deliberately carries no request timeout: the stream is
+  /// long-lived, and a timeout here would cut a healthy run off mid-flight.
   Stream<TraceEvent> streamEvents(String jobId, {int cursor = 0}) async* {
     final uri = Uri.parse(
       '$_baseUrl/api/v1/scout/${Uri.encodeComponent(jobId)}/events'
@@ -356,8 +369,11 @@ class GatewayClient {
 
     late http.Response response;
     try {
-      final streamed = await _http.send(request);
-      response = await http.Response.fromStream(streamed);
+      // The declared timeout covers the whole request, headers and body. A
+      // gateway that accepts the connection and then goes quiet must not hold
+      // the UI open forever, so the request future is bounded here rather
+      // than in the callers.
+      response = await _perform(request).timeout(timeout);
     } on http.ClientException catch (e) {
       throw GatewayException('could not reach the gateway at $uri: $e');
     } on TimeoutException {
@@ -374,6 +390,16 @@ class GatewayClient {
       return response;
     }
     throw _errorFrom(response.statusCode, response.body);
+  }
+
+  /// Sends [request] and reads the whole response body.
+  ///
+  /// The trace stream does not use this: a live event stream is long-lived by
+  /// design, so a request timeout would kill a healthy run. The stream owns
+  /// its own lifecycle and is closed by the gateway at the terminal state.
+  Future<http.Response> _perform(http.Request request) async {
+    final streamed = await _http.send(request);
+    return http.Response.fromStream(streamed);
   }
 
   T _parse<T>(http.Response response, T Function(Map<String, dynamic>) parse) {
