@@ -458,6 +458,63 @@ class QlooPlace {
   );
 }
 
+/// One seed input's contribution to a door's affinity, straight from Qloo's
+/// explainability output.
+class Explainability {
+  const Explainability({
+    required this.entityId,
+    required this.score,
+    this.label = '',
+  });
+
+  final String entityId;
+  final double score;
+
+  /// The seed entity's display name when Qloo reported one.
+  final String label;
+
+  factory Explainability.fromJson(Map<String, dynamic> json) => Explainability(
+    entityId: _string(json['entity_id']),
+    score: _double(json['score']) ?? 0,
+    label: _string(json['label']),
+  );
+}
+
+/// One age bucket's delta versus the population baseline.
+class DemographicBucket {
+  const DemographicBucket({required this.label, required this.delta});
+
+  final String label;
+  final double delta;
+
+  factory DemographicBucket.fromJson(Map<String, dynamic> json) =>
+      DemographicBucket(
+        label: _string(json['label']),
+        delta: _double(json['delta']) ?? 0,
+      );
+}
+
+/// One door's demographic alignment inputs.
+class Demographics {
+  const Demographics({
+    required this.ageBuckets,
+    required this.maleDelta,
+    required this.femaleDelta,
+  });
+
+  final List<DemographicBucket> ageBuckets;
+  final double maleDelta;
+  final double femaleDelta;
+
+  factory Demographics.fromJson(Map<String, dynamic> json) => Demographics(
+    ageBuckets: _list(json['age_buckets'])
+        .map(DemographicBucket.fromJson)
+        .toList(),
+    maleDelta: _double(json['male_delta']) ?? 0,
+    femaleDelta: _double(json['female_delta']) ?? 0,
+  );
+}
+
 /// One recommended door.
 class Door {
   const Door({
@@ -472,6 +529,9 @@ class Door {
     this.pitch,
     this.menu,
     this.evidenceIds = const [],
+    this.explainability = const [],
+    this.demographics,
+    this.distanceMeters = 0,
   });
 
   final String id;
@@ -485,6 +545,16 @@ class Door {
   final Pitch? pitch;
   final MenuFinding? menu;
   final List<String> evidenceIds;
+
+  /// The per-input contributions behind the affinity. Empty when Qloo
+  /// reported none — never a guess.
+  final List<Explainability> explainability;
+
+  /// The door's demographic profile, when the gateway carried one.
+  final Demographics? demographics;
+
+  /// The straight-line distance from the preset point, in metres.
+  final double distanceMeters;
 
   /// The composite percentage, or null when the gateway did not return one.
   double? get compositePercent => scores.composite?.percent;
@@ -520,6 +590,13 @@ class Door {
     pitch: json['pitch'] is Map ? Pitch.fromJson(_map(json['pitch'])) : null,
     menu: json['menu'] is Map ? MenuFinding.fromJson(_map(json['menu'])) : null,
     evidenceIds: _stringList(json['evidence_ids']),
+    explainability: _list(
+      json['explainability'],
+    ).map(Explainability.fromJson).toList(),
+    demographics: json['demographics'] is Map
+        ? Demographics.fromJson(_map(json['demographics']))
+        : null,
+    distanceMeters: _double(json['distance_meters']) ?? 0,
   );
 }
 

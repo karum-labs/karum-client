@@ -115,11 +115,10 @@ abstract final class KarumColors {
 
 /// The three official typefaces.
 ///
-/// **The font files are not supplied with the brand guide**, and they are
-/// deliberately not vendored here — see `BRAND.md` § Missing from the kit.
-/// Until the SIL Open Font License files are added to the `fonts:` section of
-/// `pubspec.yaml`, a family named here resolves to the platform default;
-/// nothing else has to change when they land.
+/// The font files ship with the client under `assets/fonts/` and are declared
+/// in the `fonts:` section of `pubspec.yaml`; the SIL Open Font License files
+/// sit beside them. A family named here resolves to the bundled file, not the
+/// platform default.
 abstract final class KarumFonts {
   /// **official** — the wordmark and every heading. Bricolage Grotesque, loaded
   /// by the guide at weights 600 and 700.

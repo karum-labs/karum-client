@@ -104,6 +104,14 @@ class _EvidenceDialog extends StatelessWidget {
                       const SectionLabel('Door scores'),
                       const SizedBox(height: KarumSpacing.sm),
                       _DoorScoreFacts(door: door!, campaign: campaign),
+                      const SizedBox(height: KarumSpacing.xl),
+                      const SectionLabel('Affinity inputs'),
+                      const SizedBox(height: KarumSpacing.sm),
+                      _ExplainabilityFacts(door: door!),
+                      const SizedBox(height: KarumSpacing.xl),
+                      const SectionLabel('Demographics'),
+                      const SizedBox(height: KarumSpacing.sm),
+                      _DemographicFacts(door: door!),
                     ],
                     const SizedBox(height: KarumSpacing.xl),
                     Row(
@@ -243,6 +251,138 @@ class _DoorScoreFacts extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// The per-input contributions behind a door's affinity, as Qloo reported
+/// them. An empty list is a reported absence, not a zero contribution.
+class _ExplainabilityFacts extends StatelessWidget {
+  const _ExplainabilityFacts({required this.door});
+
+  final Door door;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final items = door.explainability;
+    if (items.isEmpty) {
+      return Text(
+        'Qloo reported no per-input contribution for this door. That is a '
+        'reported absence, not a zero contribution.',
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Each seed input and the weight Qloo gave it for this door.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: palette.mute),
+        ),
+        const SizedBox(height: KarumSpacing.sm),
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.label.isEmpty ? item.entityId : item.label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: palette.ink),
+                  ),
+                ),
+                Text(
+                  item.score.toStringAsFixed(3),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: palette.mute),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: KarumSpacing.xs),
+        const SourceBadge(source: 'qloo_fact'),
+      ],
+    );
+  }
+}
+
+/// The door's demographic profile: the age buckets and the male and female
+/// deltas against the population baseline.
+class _DemographicFacts extends StatelessWidget {
+  const _DemographicFacts({required this.door});
+
+  final Door door;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final demo = door.demographics;
+    if (demo == null) {
+      return Text(
+        'No demographic profile came back for this door, so its demographic '
+        'alignment is unknown.',
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (demo.ageBuckets.isEmpty)
+          Text(
+            'The profile carries no age buckets.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+          )
+        else
+          for (final bucket in demo.ageBuckets)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      bucket.label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: palette.ink),
+                    ),
+                  ),
+                  Text(
+                    _signed(bucket.delta),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge?.copyWith(color: palette.mute),
+                  ),
+                ],
+              ),
+            ),
+        const SizedBox(height: KarumSpacing.xs),
+        Text(
+          'Male ${_signed(demo.maleDelta)} · female ${_signed(demo.femaleDelta)}',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: palette.mute),
+        ),
+        const SizedBox(height: KarumSpacing.xs),
+        const SourceBadge(source: 'qloo_fact'),
+      ],
+    );
+  }
+
+  /// A delta with its sign, so a reader never has to infer one.
+  static String _signed(double value) {
+    final text = value.toStringAsFixed(2);
+    return value > 0 ? '+$text' : text;
   }
 }
 

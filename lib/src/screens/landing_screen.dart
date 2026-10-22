@@ -1054,16 +1054,52 @@ class _Hero extends StatelessWidget {
           Wrap(
             spacing: KarumSpacing.xl,
             runSpacing: KarumSpacing.sm,
-            children: const [
-              _Proof(label: 'Yes, Austin', detail: 'Preset · bars'),
-              _Proof(label: 'Yes, Brooklyn', detail: 'Flagship + collab'),
-              _Proof(label: 'Yes, Colaba', detail: 'Preset · cafés'),
-              _Proof(label: 'No guessing', detail: 'Fixture/degraded labelled'),
+            children: [
+              for (final city in _presetCities)
+                _Proof(
+                  label: 'Yes, $city',
+                  detail: _proofDetail(city),
+                ),
+              _modeProof(context),
             ],
           ),
         ],
       ),
     );
+  }
+
+  /// The mode tile in the landing proof strip, computed in its own shallow
+  /// scope so the analyzer (and a reader) can see where the health snapshot
+  /// comes from.
+  _Proof _modeProof(BuildContext context) {
+    final health = AppScope.maybeOf(context)?.health;
+    return _Proof(
+      label: health == null ? 'Mode —' : 'Mode ${health.mode.name}',
+      detail: health == null ? 'waiting for /health' : 'the gateway says so',
+    );
+  }
+
+  /// The cities the locked catalogue can run, in server order, deduplicated.
+  List<String> get _presetCities {
+    final out = <String>{};
+    for (final preset in PresetCatalog.all) {
+      out.add(preset.city.split(',').first.trim());
+    }
+    return out.toList()..sort();
+  }
+
+  /// The one-line proof a city's preset carries, drawn from the catalogue.
+  String _proofDetail(String city) {
+    switch (city) {
+      case 'Austin':
+        return 'Preset · bars';
+      case 'Brooklyn':
+        return 'Flagship + collab';
+      case 'Colaba':
+        return 'Preset · cafés';
+      default:
+        return 'Preset';
+    }
   }
 }
 

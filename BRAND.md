@@ -78,7 +78,7 @@ How to consume them:
 
 ## Missing from the kit
 
-- **Font files.** The three families are named in `KarumFonts`, but the archive ships no font files and none were downloaded. `pubspec.yaml` carries a commented `fonts:` block with the exact `assets/fonts/` layout; until the SIL OFL files land there, the families resolve to the platform default, and nothing under `lib/` needs to change when they arrive.
+- **Font files.** The three families named in `KarumFonts` ship with the client under `assets/fonts/` and are declared in the active `fonts:` block of `pubspec.yaml`. The SIL Open Font License files sit beside them, so the families resolve to the bundled files.
 - **Lane icons.** The guide's lane glyphs exist only as inline symbols in the guide's own HTML; there are no icon files, so none are checked in. The 24-unit grid rules are recorded in `KarumBrand` for when they land.
 - **Maskable PWA icons (192/512).** No such artwork exists, so `manifest.json` declares only what the kit provides.
 
