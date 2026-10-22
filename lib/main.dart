@@ -7,6 +7,7 @@ import 'src/app/app_scope.dart';
 import 'src/app/routes.dart';
 import 'src/auth/session_storage.dart';
 import 'src/config/app_flags.dart';
+import 'src/screens/account_screen.dart';
 import 'src/screens/door_pitch_screen.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/judge_entry_screen.dart';
@@ -211,6 +212,9 @@ class _KarumAppState extends State<KarumApp> {
     }
     if (segments.length == 1 && segments[0] == 'register') {
       return _page(const RegisterScreen(), settings.name ?? '/register');
+    }
+    if (segments.length == 1 && segments[0] == 'account') {
+      return _page(const AccountScreen(), settings.name ?? '/account');
     }
 
     // /scout/:jobId/doors/:doorId

@@ -409,6 +409,22 @@ class _LandingScreenState extends State<LandingScreen> {
           KarumHeader(
             onNewScout: _scrollToBuilder,
             onStatus: () => Navigator.of(context).pushNamed('/status'),
+            actions: [
+              // The public demo stays anonymous by default; the header only
+              // offers the optional account path. Once a session exists the
+              // same entry opens the account page instead of the login form.
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: TextButton(
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushNamed(scope?.session == null ? '/login' : '/account'),
+                  child: Text(
+                    scope?.session == null ? 'Sign in' : 'Your account',
+                  ),
+                ),
+              ),
+            ],
           ),
           ModeBanner(health: scope?.health, error: scope?.healthError),
           const JudgeBanner(),
@@ -986,6 +1002,16 @@ class _Hero extends StatelessWidget {
         ),
       ],
     );
+    final copy = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        heroText,
+        const SizedBox(height: KarumSpacing.lg),
+        supporting,
+        const SizedBox(height: KarumSpacing.xl),
+        actions,
+      ],
+    );
 
     return Container(
       padding: EdgeInsets.only(top: compact ? 4 : 18),
@@ -1010,20 +1036,18 @@ class _Hero extends StatelessWidget {
           ),
           const SizedBox(height: KarumSpacing.xl),
           if (compact) ...[
-            heroText,
-            const SizedBox(height: KarumSpacing.lg),
-            supporting,
+            copy,
+            const SizedBox(height: KarumSpacing.xl),
+            const _HeroPreview(),
           ] else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 7, child: heroText),
-                const SizedBox(width: 48),
-                Expanded(flex: 4, child: supporting),
+                Expanded(flex: 7, child: copy),
+                const SizedBox(width: 32),
+                const Expanded(flex: 5, child: _HeroPreview()),
               ],
             ),
-          const SizedBox(height: KarumSpacing.xl),
-          actions,
           const SizedBox(height: KarumSpacing.xl),
           Container(height: 1, color: palette.line),
           const SizedBox(height: KarumSpacing.lg),
@@ -1037,6 +1061,142 @@ class _Hero extends StatelessWidget {
               _Proof(label: 'No guessing', detail: 'Fixture/degraded labelled'),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A still of a real run, not a live call: the names are the verified top of
+/// the Austin preset's door board, and the card is labelled as a recording so
+/// the landing page never implies the numbers behind it are live.
+class _HeroPreview extends StatelessWidget {
+  const _HeroPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final text = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(KarumRadius.card),
+        border: Border.all(color: palette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'RECORDED RUN',
+                style: text.labelSmall?.copyWith(
+                  color: palette.brand,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: palette.paper,
+                  borderRadius: BorderRadius.circular(KarumRadius.pill),
+                  border: Border.all(color: palette.line),
+                ),
+                child: Text(
+                  'SAMPLE 01',
+                  style: text.labelSmall?.copyWith(
+                    color: palette.mute,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Sola in Austin',
+            style: text.titleLarge?.copyWith(
+              fontSize: 22,
+              color: palette.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Yuzu-mezcal aperitif · Austin, TX',
+            style: text.bodySmall?.copyWith(color: palette.mute),
+          ),
+          const SizedBox(height: KarumSpacing.lg),
+          Container(height: 1, color: palette.line),
+          const _HeroDoor(rank: '01', name: 'Mezcalería Tobalá'),
+          Container(height: 1, color: palette.line),
+          const _HeroDoor(rank: '02', name: 'Midnight Cowboy'),
+          Container(height: 1, color: palette.line),
+          const _HeroDoor(rank: '03', name: "Clark's Oyster Bar"),
+          Container(height: 1, color: palette.line),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 14,
+                color: palette.brand,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Every door keeps its receipts.',
+                  style: text.bodySmall?.copyWith(color: palette.mute),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroDoor extends StatelessWidget {
+  const _HeroDoor({required this.rank, required this.name});
+
+  final String rank;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 26,
+            child: Text(
+              rank,
+              style: text.labelSmall?.copyWith(
+                color: palette.brand,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodyLarge?.copyWith(
+                color: palette.ink,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: KarumSpacing.sm),
+          Icon(Icons.north_east_rounded, size: 14, color: palette.mute),
         ],
       ),
     );

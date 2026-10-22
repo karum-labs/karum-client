@@ -80,31 +80,37 @@ flutter:
 
   # The brand guide's three typefaces — Bricolage Grotesque (headings), IBM Plex
   # Sans (body), IBM Plex Mono (scores and the evidence drawer) — are all SIL
-  # Open Font License. The font files are NOT part of the supplied kit, so this
-  # block stays inert: until they are dropped into `assets/fonts/`, the families
-  # named in `lib/src/theme/brand_tokens.dart` resolve to the platform default.
-  # Nothing under `lib/` needs to change when they land.
-  #
-  # fonts:
-  #   - family: Bricolage Grotesque
-  #     fonts:
-  #       - asset: assets/fonts/BricolageGrotesque-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/BricolageGrotesque-Bold.ttf
-  #         weight: 700
-  #   - family: IBM Plex Sans
-  #     fonts:
-  #       - asset: assets/fonts/IBMPlexSans-Regular.ttf
-  #       - asset: assets/fonts/IBMPlexSans-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
-  #         weight: 600
-  #   - family: IBM Plex Mono
-  #     fonts:
-  #       - asset: assets/fonts/IBMPlexMono-Regular.ttf
-  #       - asset: assets/fonts/IBMPlexMono-Medium.ttf
-  #         weight: 500
-  #
+  # Open Font License. The TTFs are self-hosted in `assets/fonts/` (not fetched
+  # at runtime) so the demo renders the brand type offline; licences sit next to
+  # them as `OFL-*.txt`. Families are named in `lib/src/theme/brand_tokens.dart`.
+  fonts:
+    - family: Bricolage Grotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque-Bold.ttf
+          weight: 700
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

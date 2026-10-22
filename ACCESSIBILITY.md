@@ -82,7 +82,8 @@ The guide publishes the focus treatment as official: **3 px of brand colour, off
 
 The ring is on the judge path: the mode pills, the category chips, the free-entry
 call to action, the hero sample, the preset buttons, the header's back, home, new
-scout and status, the board's **Pitch & route**, Evidence and regenerate, the pitch
+scout, status and sign in, the account page's campaign cards, start-a-scout and
+browse buttons, the board's **Pitch & route**, Evidence and regenerate, the pitch
 screen's download, evidence, copy and regenerate, and the evidence sheet's close.
 
 Text fields already showed a 3 px brand border on focus and keep it.
@@ -95,6 +96,10 @@ nothing to keep in sync. The keyboard walks:
 **The landing** — the brand field, the vibe field, the SKU field, their suffix
 buttons, the mode pills, the category chips, the preset buttons, then the free-entry
 call to action. The Austin preset is the fifth stop.
+
+**The account page** — the header's home, new scout and status, the banner's
+**Sign out**, the **Open campaign** cards (or **Start a scout**), then Browse the
+public demo. A signed-out visit offers **Sign in** first.
 
 **The workspace** — the header's back, home, new scout and status, the download
 button, the trace panel, the map's list toggle, the board's tabs, the door card's
@@ -117,7 +122,8 @@ Every control on the judge path carries an accessible name.
 | --- | --- | --- |
 | Back | Back | the button's text |
 | Karum home | Karum home | `Semantics` on the logo |
-| New scout, Status | New scout, Status | the button's text |
+| New scout, Status, Sign in / Your account | New scout, Status, Sign in / Your account | the button's text |
+| Sign out, Open campaign, Start a scout, Browse the public demo | Sign out, Open campaign, Start a scout, Browse the public demo | the button's text |
 | Download run-sheet / site brief | Download run-sheet / Download site brief | the icon's semantic label |
 | Search for the typed brand | Search for the typed brand | the icon's semantic label |
 | Add this vibe, Add this SKU | Add this vibe, Add this SKU | the icon's semantic label |

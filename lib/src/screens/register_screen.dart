@@ -45,7 +45,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       await scope.register(email: _email.text.trim(), password: _password.text);
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/account', (route) => false);
       }
     } on GatewayException catch (error) {
       if (mounted) setState(() => _error = error.message);

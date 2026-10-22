@@ -51,7 +51,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
     });
     try {
       await scope.signIn(_email.text.trim(), _password.text);
-      if (mounted) _openDemo();
+      if (mounted) _openAccount();
     } on GatewayException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -78,7 +78,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
     });
     try {
       await scope.judgeSignIn();
-      if (mounted) _openDemo();
+      if (mounted) _openAccount();
     } on GatewayException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -100,7 +100,13 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
-  void _openDemo() {
+  /// Signed-in users land on their account page, not the anonymous landing.
+  void _openAccount() {
+    Navigator.of(context).pushNamedAndRemoveUntil('/account', (route) => false);
+  }
+
+  /// The public demo stays one tap away from the form.
+  void _openLanding() {
     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
   }
 
@@ -130,8 +136,8 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
             Text(
               session == null
                   ? 'Sign in with your email and password.'
-                  : 'The public demo is still open. Continue to the seed '
-                        'builder or sign out.',
+                  : 'Your campaigns live on the account page. The public demo '
+                        'stays open.',
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: palette.mute),
             ),
@@ -147,7 +153,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
                 displayName: session.account.displayName,
                 isJudge: session.account.isJudge,
                 busy: _busy,
-                onContinue: _openDemo,
+                onContinue: _openAccount,
                 onSignOut: _signOut,
               )
             else
@@ -247,7 +253,7 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
             ],
           ),
           TextButton(
-            onPressed: _busy ? null : _openDemo,
+            onPressed: _busy ? null : _openLanding,
             child: const Text('Continue without signing in'),
           ),
         ],
@@ -364,7 +370,7 @@ class _SignedInPanel extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: busy ? null : onContinue,
             icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: const Text('Continue to the demo'),
+            label: const Text('Go to your account'),
           ),
         ),
         const SizedBox(height: KarumSpacing.sm),

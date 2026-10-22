@@ -33,6 +33,12 @@ class KarumPreset {
   /// The preset's stored city point. "Inspect this seed" hands it to the
   /// free-entry form so the sample still runs when no geocoder key is set.
   final GeoPoint? point;
+
+  /// The campaign id the gateway seeds for this preset.
+  ///
+  /// Mirrors `presets.CampaignID` in `karum-server`: every stored preset
+  /// campaign uses `cmp-<preset id>`.
+  String get campaignId => 'cmp-$id';
 }
 
 /// One card on the landing screen. Brooklyn carries two mode variants behind a
