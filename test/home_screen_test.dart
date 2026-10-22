@@ -46,7 +46,7 @@ void main() {
       find.text('Brands lose the account by knocking on the wrong door.'),
       findsOneWidget,
     );
-    expect(find.textContaining('Fixture mode'), findsOneWidget);
+    expect(find.textContaining('Previous attempt'), findsOneWidget);
     expect(find.text('gateway'), findsOneWidget);
   });
 
@@ -93,5 +93,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Degraded'), findsOneWidget);
+  });
+
+  // PLAN.md §50: a visitor on a replayed run must not read "fixture" or
+  // "replay" in the mode badge. The internal mode name stays `fixture`.
+  testWidgets('fixture mode reads as a previous attempt, not test data', (
+    tester,
+  ) async {
+    final client = _clientWith(
+      (request) async => http.Response(
+        jsonEncode({'service': 'gateway', 'status': 'ok', 'mode': 'fixture'}),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+
+    await tester.pumpWidget(_app(client));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Previous attempt'), findsOneWidget);
+    expect(find.textContaining('Fixture mode'), findsNothing);
+    expect(find.textContaining('Replaying recorded'), findsNothing);
   });
 }

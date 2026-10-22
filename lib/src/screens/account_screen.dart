@@ -254,8 +254,9 @@ class _EmptyCampaigns extends StatelessWidget {
             ),
             const SizedBox(height: KarumSpacing.xs),
             Text(
-              'Start a scout from the landing page. The four public samples run '
-              'without an account.',
+              'Start a search from the landing page. The four public samples '
+              'run without an account; the result stays with the browser that '
+              'started it.',
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: palette.mute),
             ),

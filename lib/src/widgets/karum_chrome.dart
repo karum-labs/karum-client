@@ -6,6 +6,7 @@ import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import 'common.dart';
 import 'focus_ring.dart';
+import 'glossary.dart';
 import 'karum_logo.dart';
 
 /// The app header shared by every route.
@@ -96,6 +97,28 @@ class KarumHeader extends StatelessWidget {
                   label: const Text('New scout'),
                 ),
               ),
+            // The glossary is reachable from every screen (PLAN.md §51).
+            // The full label fits where the nav fits; on narrow windows an
+            // icon-only button takes its place.
+            if (!hideNav)
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: TextButton.icon(
+                  onPressed: () => showGlossarySheet(context),
+                  icon: const Icon(Icons.menu_book_rounded, size: 18),
+                  label: const Text('Glossary'),
+                ),
+              )
+            else
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: 'Glossary',
+                  onPressed: () => showGlossarySheet(context),
+                  icon: Icons.menu_book_rounded,
+                  iconSize: 20,
+                ),
+              ),
             if (!hideNav && onStatus != null)
               FocusRing(
                 borderRadius: BorderRadius.circular(KarumRadius.control),
@@ -147,11 +170,11 @@ class ModeBanner extends StatelessWidget {
       GatewayMode.fixture => _Banner(
         background: palette.investigate.withValues(alpha: 0.14),
         foreground: palette.ink,
-        icon: Icons.science_outlined,
-        title: 'Fixture mode',
+        icon: Icons.history_rounded,
+        title: 'Showing a previous attempt',
         message:
-            'Replaying recorded Qloo and Places payloads. This is not a live '
-            'network run.',
+            'These results were recorded from an earlier search and are shown '
+            'as they were. They are not a fresh search of today\'s data.',
       ),
       GatewayMode.degraded => _Banner(
         background: palette.avoid.withValues(alpha: 0.14),

@@ -6,6 +6,7 @@ import '../util/links.dart';
 import 'common.dart';
 import 'evidence_sheet.dart';
 import 'focus_ring.dart';
+import 'glossary.dart';
 
 /// The door board: recommended doors, the skip list, and the
 /// explainability tab.
@@ -84,6 +85,10 @@ class _DoorBoardState extends State<DoorBoard> {
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: palette.mute),
                     ),
+                    // First use of "door board" on the workspace: one-line
+                    // gloss so a first-time visitor can follow the tabs
+                    // without the glossary sheet (PLAN.md §51).
+                    const GlossNote(term: 'Door board'),
                   ],
                 ),
               ),
@@ -768,12 +773,21 @@ class _SkipTab extends StatelessWidget {
                   'The board is the whole returned shortlist.',
       );
     }
+    // Prepend a one-line gloss so a first-time visitor knows what the Skip
+    // tab is before they read the rows (PLAN.md §51). The leading note is a
+    // non-selectable header row.
     return ListView.separated(
       padding: const EdgeInsets.all(KarumSpacing.lg),
-      itemCount: campaign.skipList.length,
+      itemCount: campaign.skipList.length + 1,
       separatorBuilder: (_, _) => const SizedBox(height: KarumSpacing.sm),
       itemBuilder: (context, index) {
-        final skip = campaign.skipList[index];
+        if (index == 0) {
+          return const Padding(
+            padding: EdgeInsets.only(bottom: KarumSpacing.xs),
+            child: GlossNote(term: 'Skip list'),
+          );
+        }
+        final skip = campaign.skipList[index - 1];
         return Container(
           padding: const EdgeInsets.all(KarumSpacing.md),
           decoration: BoxDecoration(

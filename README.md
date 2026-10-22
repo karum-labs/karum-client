@@ -71,10 +71,26 @@ judge sign-in flow, and the documented keyboard path and contrast table in
 `GET /health` from the gateway reports the operational mode. The client renders it as a banner:
 
 - **Live** — real upstream data
-- **Fixture** — replaying recorded data
+- **Previous attempt** — the result was recorded from an earlier search and
+  is shown as it was (the gateway's internal mode name stays `fixture`)
 - **Degraded** — running the autopilot fallback
 
-The banner colours are implementation-defined: live takes the brand teal, fixture the Investigate amber, and degraded the Avoid red — the lanes the guide already uses for caution and for a stated problem (see [BRAND.md](BRAND.md)).
+The banner colours are implementation-defined: live takes the brand teal, the previous-attempt banner takes the Investigate amber, and degraded the Avoid red — the lanes the guide already uses for caution and for a stated problem (see [BRAND.md](BRAND.md)).
+
+## Samples and account scope
+
+The landing page's samples run anonymously by default. A sample started
+without a signed-in session is its own search: it does not read back the
+judge account's prior run through the shared campaign id. The judge's
+pre-seeded campaigns stay on the account page (`/account`) and open through
+`/campaigns/<id>` as before. See `PLAN.md` §49 for the server-side scope.
+
+## Glossary
+
+Karum's brand terms (door, seed, door board, scout, flagship, collab, skip
+list, menu audit, pitch, baseline) are explained on first use and in the
+"Glossary" sheet that opens from the chrome of every screen
+(`widgets/glossary.dart`, see `PLAN.md` §51).
 
 ## Development
 

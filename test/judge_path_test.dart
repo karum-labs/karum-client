@@ -35,8 +35,8 @@ void main() {
     expect(body.containsKey('free_entry'), isFalse);
     expect(gateway.scoutPosts.single.headers['Idempotency-Key'], isNotEmpty);
 
-    // The workspace shows the fixture banner and the ranked door.
-    expect(find.textContaining('Fixture mode'), findsOneWidget);
+    // The workspace shows the previous-attempt banner and the ranked door.
+    expect(find.textContaining('Showing a previous attempt'), findsOneWidget);
     expect(find.text('Ready'), findsWidgets);
     expect(find.text("Whisler's"), findsWidgets);
     expect(find.textContaining('Whisler'), findsWidgets);

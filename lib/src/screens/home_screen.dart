@@ -221,8 +221,8 @@ class _ModeBanner extends StatelessWidget {
       ),
       GatewayMode.fixture => (
         palette.investigate,
-        'Fixture mode — replaying recorded data',
-        Icons.science_outlined,
+        'Previous attempt — replayed from an earlier run',
+        Icons.history_rounded,
       ),
       GatewayMode.degraded => (
         palette.avoid,

@@ -79,7 +79,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: KarumSpacing.sm),
               Text(
-                'Email and password. The sample campaigns stay available without an account.',
+                'Email and password. You can still try a sample without an '
+                'account; each sample now runs as its own search, so your '
+                'results stay with you.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: palette.mute),
               ),

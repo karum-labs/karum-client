@@ -483,8 +483,10 @@ class _LandingScreenState extends State<LandingScreen> {
         ),
         const SizedBox(height: KarumSpacing.xs),
         Text(
-          'Each sample posts a stored city, seed, radius, and category tag. '
-          'No typing, no geocoder miss.',
+          'Each sample posts a stored city, seed (the brand and the taste '
+          'words that describe it), radius, and category tag. No typing, no '
+          'geocoder miss. Each click runs the sample as its own search; the '
+          'result stays with this browser.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: KarumPalette.of(context).mute),
         ),
@@ -548,13 +550,14 @@ class _LandingScreenState extends State<LandingScreen> {
                       const SectionLabel('Free entry'),
                       const SizedBox(height: KarumSpacing.sm),
                       Text(
-                        'Build a scout instead.',
+                        'Build a search instead.',
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: KarumSpacing.xs),
                       Text(
-                        'A seed and a city in. A ranked door board, evidence, '
-                        'and a pitch out.',
+                        'Enter a brand (the seed) and a city. Out comes a '
+                        'ranked list of places to visit (the door board), the '
+                        'evidence behind each one, and a short pitch.',
                         style: Theme.of(context).textTheme.bodyMedium
                             ?.copyWith(color: palette.mute),
                       ),
@@ -972,10 +975,15 @@ class _Hero extends StatelessWidget {
         color: palette.ink,
       ),
     );
+    // The hero is the first time a visitor meets the product's words. The
+    // one-line gloss stays close to the terms so a reader does not have to
+    // leave the page to follow along. The glossary sheet in the chrome has
+    // the full list (PLAN.md §51).
     final supporting = Text(
-      'Karum turns a brand seed and a city into a ranked door board, a field '
-      'route, and a pitch for every stop. Every number carries its source; '
-      'every recommendation carries a reason.',
+      'Karum turns a brand (the seed) and a city into a short list of places '
+      'to visit (the door board), a walking route between them, and a short '
+      'pitch for every stop. Every number carries its source; every '
+      'recommendation carries a reason.',
       style: Theme.of(context).textTheme.bodyLarge
           ?.copyWith(fontSize: 17, color: palette.mute, height: 1.55),
     );
@@ -1374,6 +1382,20 @@ class _PresetCard extends StatelessWidget {
                           ? null
                           : () => onRun(group.variants[1]),
                       child: Text(group.variants[1].buttonLabel),
+                    ),
+                  ),
+                  // First place the brand's two mode words appear beside
+                  // each other; one line of gloss keeps a first-time
+                  // visitor from having to open the glossary (PLAN.md §51).
+                  const Padding(
+                    padding: EdgeInsets.only(top: KarumSpacing.xs),
+                    child: Text(
+                      'Flagship: a large own-brand store on a fitting '
+                      'street. Collab: a joint event with a partner brand.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                 ],
