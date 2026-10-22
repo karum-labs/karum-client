@@ -24,4 +24,13 @@ abstract final class AppConfig {
     'GATEWAY_URL',
     defaultValue: 'http://localhost:8080',
   );
+
+  /// Browser key for the Maps JavaScript API.
+  ///
+  /// Empty keeps the OpenStreetMap/CARTO map. `make local` passes the value
+  /// from `GOOGLE_MAPS_WEB_KEY`. The key is restricted to that one API, so a
+  /// map load cannot spend the Places or Routes budget.
+  static const String googleMapsWebKey = String.fromEnvironment(
+    'GOOGLE_MAPS_WEB_KEY',
+  );
 }

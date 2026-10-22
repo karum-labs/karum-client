@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api/scout_models.dart';
+import '../config/app_config.dart';
+import '../maps/google_door_map.dart';
 import '../theme/brand_tokens.dart';
 import '../util/polyline.dart';
 import 'common.dart';
@@ -232,6 +234,7 @@ class _MapPanelState extends State<MapPanel> {
       0.01,
       (max, cell) => cell.affinity > max ? cell.affinity : max,
     );
+    final mapsKey = AppConfig.googleMapsWebKey;
 
     return Stack(
       children: [
@@ -249,130 +252,160 @@ class _MapPanelState extends State<MapPanel> {
           descendantsAreFocusable: false,
           child: Semantics(
             label: 'Door map. The same doors are listed below the map.',
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: LatLng(center.lat, center.lng),
-                initialZoom: campaign.mode == ScoutMode.flagship ? 12.2 : 12.8,
-                minZoom: 3,
-                maxZoom: 18,
-                backgroundColor: palette.paper,
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                ),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.karum.app',
-                  maxNativeZoom: 19,
-                ),
-                if (localities.isNotEmpty)
-                  PolygonLayer(
-                    polygons: [
-                      for (final locality in localities)
-                        Polygon(
-                          points: [
-                            for (final vertex in locality.polygon)
-                              LatLng(vertex.lat, vertex.lng),
-                          ],
-                          color: palette.brand.withValues(alpha: 0.05),
-                          borderColor: palette.brand.withValues(alpha: 0.42),
-                          borderStrokeWidth: 1.2,
-                          label: locality.name,
-                          labelStyle: TextStyle(
-                            color: palette.brand,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                    ],
-                  ),
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: LatLng(center.lat, center.lng),
-                      radius: campaign.radiusMeters.toDouble(),
-                      useRadiusInMeter: true,
-                      color: palette.brand.withValues(alpha: 0.05),
-                      borderColor: palette.brand.withValues(alpha: 0.28),
-                      borderStrokeWidth: 1,
+            child: mapsKey.isEmpty
+                ? FlutterMap(
+                    options: MapOptions(
+                      initialCenter: LatLng(center.lat, center.lng),
+                      initialZoom: campaign.mode == ScoutMode.flagship
+                          ? 12.2
+                          : 12.8,
+                      minZoom: 3,
+                      maxZoom: 18,
+                      backgroundColor: palette.paper,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                      ),
                     ),
-                    for (final cell in cells.take(300))
-                      CircleMarker(
-                        point: LatLng(cell.point.lat, cell.point.lng),
-                        radius: 12 + (cell.affinity / maxAffinity) * 20,
-                        color: palette.brand.withValues(
-                          alpha: 0.08 + (cell.affinity / maxAffinity) * 0.26,
+                    children: [
+                      TileLayer(
+                        // The public OSM tile server refuses the burst of requests a
+                        // zoom makes, and the browser reports that as "Failed to
+                        // fetch", so the new zoom stays blank. CARTO serves the same
+                        // OpenStreetMap data and is built for browser apps.
+                        urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                        subdomains: const ['a', 'b', 'c', 'd'],
+                        retinaMode: true,
+                        userAgentPackageName: 'com.karum.app',
+                        maxNativeZoom: 20,
+                      ),
+                      if (localities.isNotEmpty)
+                        PolygonLayer(
+                          polygons: [
+                            for (final locality in localities)
+                              Polygon(
+                                points: [
+                                  for (final vertex in locality.polygon)
+                                    LatLng(vertex.lat, vertex.lng),
+                                ],
+                                color: palette.brand.withValues(alpha: 0.05),
+                                borderColor: palette.brand.withValues(
+                                  alpha: 0.42,
+                                ),
+                                borderStrokeWidth: 1.2,
+                                label: locality.name,
+                                labelStyle: TextStyle(
+                                  color: palette.brand,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                          ],
                         ),
-                        borderColor: palette.brand.withValues(alpha: 0.28),
-                        borderStrokeWidth: 0.8,
-                      ),
-                  ],
-                ),
-                if (routePoints.length > 1)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: routePoints,
-                        strokeWidth: 4,
-                        color: palette.brand,
-                        borderStrokeWidth: 1.5,
-                        borderColor: palette.surface,
-                      ),
-                    ],
-                  ),
-                MarkerLayer(
-                  markers: [
-                    for (final skip in skipsWithPoints)
-                      Marker(
-                        point: LatLng(skip.point!.lat, skip.point!.lng),
-                        width: 22,
-                        height: 22,
-                        alignment: Alignment.center,
-                        child: Semantics(
-                          container: true,
-                          label:
-                              'Skipped door ${skip.name}: ${skip.reasonLabel}',
-                          child: Tooltip(
-                            message: '${skip.name} · ${skip.reasonLabel}',
-                            excludeFromSemantics: true,
-                            child: const _SkipPin(),
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: LatLng(center.lat, center.lng),
+                            radius: campaign.radiusMeters.toDouble(),
+                            useRadiusInMeter: true,
+                            color: palette.brand.withValues(alpha: 0.05),
+                            borderColor: palette.brand.withValues(alpha: 0.28),
+                            borderStrokeWidth: 1,
                           ),
-                        ),
+                          for (final cell in cells.take(300))
+                            CircleMarker(
+                              point: LatLng(cell.point.lat, cell.point.lng),
+                              radius: 12 + (cell.affinity / maxAffinity) * 20,
+                              color: palette.brand.withValues(
+                                alpha:
+                                    0.08 + (cell.affinity / maxAffinity) * 0.26,
+                              ),
+                              borderColor: palette.brand.withValues(
+                                alpha: 0.28,
+                              ),
+                              borderStrokeWidth: 0.8,
+                            ),
+                        ],
                       ),
-                    for (final door in doorsWithPoints)
-                      Marker(
-                        point: LatLng(door.point!.lat, door.point!.lng),
-                        width: _selectedDoorId == door.id ? 44 : 34,
-                        height: _selectedDoorId == door.id ? 44 : 34,
-                        alignment: Alignment.center,
-                        child: Semantics(
-                          container: true,
-                          button: true,
-                          excludeSemantics: true,
-                          label: 'Recommended door ${door.rank}: ${door.name}',
-                          onTap: () =>
-                              setState(() => _selectedDoorId = door.id),
-                          child: Tooltip(
-                            message: '${door.rank}. ${door.name}',
-                            excludeFromSemantics: true,
-                            child: InkWell(
-                              onTap: () =>
-                                  setState(() => _selectedDoorId = door.id),
-                              customBorder: const CircleBorder(),
-                              excludeFromSemantics: true,
-                              child: _DoorPin(
-                                rank: door.rank,
-                                selected: _selectedDoorId == door.id,
+                      if (routePoints.length > 1)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: routePoints,
+                              strokeWidth: 4,
+                              color: palette.brand,
+                              borderStrokeWidth: 1.5,
+                              borderColor: palette.surface,
+                            ),
+                          ],
+                        ),
+                      MarkerLayer(
+                        markers: [
+                          for (final skip in skipsWithPoints)
+                            Marker(
+                              point: LatLng(skip.point!.lat, skip.point!.lng),
+                              width: 22,
+                              height: 22,
+                              alignment: Alignment.center,
+                              child: Semantics(
+                                container: true,
+                                label:
+                                    'Skipped door ${skip.name}: ${skip.reasonLabel}',
+                                child: Tooltip(
+                                  message: '${skip.name} · ${skip.reasonLabel}',
+                                  excludeFromSemantics: true,
+                                  child: const _SkipPin(),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          for (final door in doorsWithPoints)
+                            Marker(
+                              point: LatLng(door.point!.lat, door.point!.lng),
+                              width: _selectedDoorId == door.id ? 44 : 34,
+                              height: _selectedDoorId == door.id ? 44 : 34,
+                              alignment: Alignment.center,
+                              child: Semantics(
+                                container: true,
+                                button: true,
+                                excludeSemantics: true,
+                                label:
+                                    'Recommended door ${door.rank}: ${door.name}',
+                                onTap: () =>
+                                    setState(() => _selectedDoorId = door.id),
+                                child: Tooltip(
+                                  message: '${door.rank}. ${door.name}',
+                                  excludeFromSemantics: true,
+                                  child: InkWell(
+                                    onTap: () => setState(
+                                      () => _selectedDoorId = door.id,
+                                    ),
+                                    customBorder: const CircleBorder(),
+                                    excludeFromSemantics: true,
+                                    child: _DoorPin(
+                                      rank: door.rank,
+                                      selected: _selectedDoorId == door.id,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-              ],
-            ),
+                    ],
+                  )
+                : GoogleDoorMap(
+                    apiKey: mapsKey,
+                    center: center,
+                    zoom: campaign.mode == ScoutMode.flagship ? 12.2 : 12.8,
+                    radiusMeters: campaign.radiusMeters,
+                    brand: palette.brand,
+                    doors: doorsWithPoints,
+                    skips: skipsWithPoints,
+                    cells: cells,
+                    localities: localities,
+                    routePoints: routePoints,
+                    selectedDoorId: _selectedDoorId,
+                    onSelectDoor: (id) => setState(() => _selectedDoorId = id),
+                  ),
           ),
         ),
         Positioned(
@@ -409,9 +442,11 @@ class _MapPanelState extends State<MapPanel> {
               border: Border.all(color: palette.line),
             ),
             child: Text(
-              _hasGoogleFacts(campaign)
-                  ? '© OpenStreetMap · Map data © Google'
-                  : '© OpenStreetMap contributors',
+              mapsKey.isNotEmpty
+                  ? 'Map data © Google'
+                  : _hasGoogleFacts(campaign)
+                  ? '© OpenStreetMap © CARTO · Map data © Google'
+                  : '© OpenStreetMap © CARTO',
               style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: palette.mute, fontSize: 10),
             ),
