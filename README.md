@@ -45,8 +45,10 @@ The repo is the full judge journey, not a scaffold. Screen by screen:
   resolved entity ids before `POST /api/v1/scout`.
 - **Live trace** (`workspace_screen.dart`) — Server-Sent Events stages as the
   pipeline runs, with a polling fallback when the stream drops.
-- **Map** (`widgets/map_panel.dart`) — door pins, skip pins, and locality
-  polygons from the same Qloo payload the board shows.
+- **Map** (`widgets/map_panel.dart`) — Google Maps basemap
+  (`google_maps_flutter`, key `GOOGLE_MAPS_WEB_KEY`), with door pins, skip
+  pins, and locality polygons from the same Qloo payload the board shows.
+  Without the key, the panel falls back to CARTO tiles.
 - **Door board** (`widgets/door_board.dart`) — the ranked doors, the skip list
   with the gateway's reason codes and reason detail, and the LLM-only baseline
   for comparison. The evidence drawer (`widgets/evidence_sheet.dart`) opens
