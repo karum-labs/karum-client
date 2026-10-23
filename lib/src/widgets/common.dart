@@ -71,18 +71,12 @@ class SectionLabel extends StatelessWidget {
     );
     final Widget? trailingWidget = trailing;
     if (trailingWidget == null) return label;
-    return LayoutBuilder(
-      builder: (context, constraints) => Row(
-        children: [
-          // An Expanded needs a bounded width to fill. Where the width is not
-          // bounded — inside a scroll view that sizes itself to its content,
-          // for instance — the label takes its own width instead, and the
-          // trailing widget follows it.
-          if (constraints.hasBoundedWidth) Expanded(child: label) else label,
-          const SizedBox(width: KarumSpacing.sm),
-          trailingWidget,
-        ],
-      ),
+    return Row(
+      children: [
+        Flexible(child: label),
+        const SizedBox(width: KarumSpacing.sm),
+        trailingWidget,
+      ],
     );
   }
 }
@@ -200,7 +194,7 @@ class ScoreBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
+              Flexible(
                 child: Text(
                   label,
                   style:
@@ -310,7 +304,7 @@ class FactRow extends StatelessWidget {
       children: [
         Icon(icon, size: 15, color: tint),
         const SizedBox(width: 6),
-        Expanded(
+        Flexible(
           child: Text(
             text,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
