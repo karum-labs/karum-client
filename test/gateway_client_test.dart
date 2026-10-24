@@ -300,6 +300,97 @@ void main() {
     expect(client.token, 'tok-judge');
   });
 
+  // PLAN.md §52: the four previous-run cards come from the gateway, not hardcoded
+  // Dart constants.
+  test('fetchPresets parses the catalogue, including a Brooklyn group', () async {
+    final client = _client(
+      (request) async => http.Response(
+        jsonEncode({
+          'presets': [
+            {
+              'id': 'austin-wholesale',
+              'group_id': 'austin',
+              'group_label': 'Sola in Austin',
+              'group_description': 'A mezcal aperitif.',
+              'label': 'Sola in Austin',
+              'button_label': 'Try: Sola Yuzu Mezcal in Austin, TX',
+              'description': 'Mezcal aperitif · bars and restaurants',
+              'brand': 'Sola',
+              'city': 'Austin, TX, US',
+              'mode': 'wholesale',
+              'point': {'lat': 30.2672, 'lng': -97.7431},
+              'radius_meters': 8000,
+              'category_tags': ['urn:tag:genre:place:restaurant:bar'],
+              'seeds': [
+                {
+                  'id': '32F867B9-E6DF-44C3-BCE4-40160C7ED5E4',
+                  'name': 'Aesop',
+                  'type': 'urn:entity:brand',
+                },
+              ],
+              'skus': [
+                {'id': 'sola-aperitif', 'name': 'Sola Yuzu-Mezcal Aperitif'},
+              ],
+              'campaign_id': 'cmp-austin-wholesale',
+            },
+            {
+              'id': 'brooklyn-flagship',
+              'group_id': 'brooklyn',
+              'group_label': 'Ceramics and matcha in Brooklyn',
+              'group_description': 'One seed, two questions.',
+              'label': 'Ceramics and matcha in Brooklyn',
+              'button_label': 'Try: Ceramics & Matcha — Flagship',
+              'description': 'Design retail',
+              'brand': 'Muji',
+              'city': 'Brooklyn, NY, US',
+              'mode': 'flagship',
+              'point': {'lat': 40.7172, 'lng': -73.9566},
+              'radius_meters': 8000,
+              'category_tags': ['urn:tag:genre:place:restaurant:cafe'],
+              'seeds': <Map<String, Object>>[],
+              'skus': <Map<String, Object>>[],
+              'campaign_id': 'cmp-brooklyn-flagship',
+            },
+            {
+              'id': 'brooklyn-collab',
+              'group_id': 'brooklyn',
+              'group_label': 'Ceramics and matcha in Brooklyn',
+              'group_description': 'One seed, two questions.',
+              'label': 'Brooklyn collab',
+              'button_label': 'Try: Ceramics & Matcha — Collab',
+              'description': 'Galleries',
+              'brand': 'Muji',
+              'city': 'Brooklyn, NY, US',
+              'mode': 'collab',
+              'point': {'lat': 40.7172, 'lng': -73.9566},
+              'radius_meters': 8000,
+              'category_tags': ['urn:tag:genre:place:art_gallery'],
+              'seeds': <Map<String, Object>>[],
+              'skus': <Map<String, Object>>[],
+              'campaign_id': 'cmp-brooklyn-collab',
+            },
+          ],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+
+    final catalog = await client.fetchPresets();
+    expect(catalog.all, hasLength(3));
+    expect(catalog.all.first.buttonLabel, contains('Sola Yuzu Mezcal'));
+    expect(catalog.all.first.seeds.single.name, 'Aesop');
+    expect(catalog.all.first.skus.single.name, 'Sola Yuzu-Mezcal Aperitif');
+    expect(catalog.all.first.campaignId, 'cmp-austin-wholesale');
+
+    // Brooklyn's two variants collapse into one group, in server order.
+    expect(catalog.groups, hasLength(2));
+    final brooklyn = catalog.groups.firstWhere((g) => g.brand == 'Muji');
+    expect(brooklyn.variants, hasLength(2));
+    expect(brooklyn.variants.first.mode, ScoutMode.flagship);
+    expect(brooklyn.variants.last.mode, ScoutMode.collab);
+  });
+
   test('a 401 is marked as an expired session', () async {
     final client = _client(
       (request) async => http.Response(

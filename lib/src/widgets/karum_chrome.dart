@@ -44,7 +44,6 @@ class KarumHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final width = MediaQuery.sizeOf(context).width;
-    final hideNav = width < 720;
     return SafeArea(
       bottom: false,
       child: Container(
@@ -88,45 +87,15 @@ class KarumHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            if (!hideNav && onNewScout != null)
-              FocusRing(
-                borderRadius: BorderRadius.circular(KarumRadius.control),
-                child: TextButton.icon(
-                  onPressed: onNewScout,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('New scout'),
-                ),
-              ),
-            // The glossary is reachable from every screen (PLAN.md §51).
-            // The full label fits where the nav fits; on narrow windows an
-            // icon-only button takes its place.
-            if (!hideNav)
-              FocusRing(
-                borderRadius: BorderRadius.circular(KarumRadius.control),
-                child: TextButton.icon(
-                  onPressed: () => showGlossarySheet(context),
-                  icon: const Icon(Icons.menu_book_rounded, size: 18),
-                  label: const Text('Glossary'),
-                ),
-              )
-            else
-              FocusRing(
-                borderRadius: BorderRadius.circular(KarumRadius.control),
-                child: NamedIconButton(
-                  label: 'Glossary',
-                  onPressed: () => showGlossarySheet(context),
-                  icon: Icons.menu_book_rounded,
-                  iconSize: 20,
-                ),
-              ),
-            if (!hideNav && onStatus != null)
-              FocusRing(
-                borderRadius: BorderRadius.circular(KarumRadius.control),
-                child: TextButton(
-                  onPressed: onStatus,
-                  child: const Text('Status'),
-                ),
-              ),
+            // Built as a list, not a run of sibling `if`s, so the gap between
+            // whichever of these actually render stays the same `sm` spacing
+            // the custom [actions] already use below — three `if`s with no
+            // separator between them left New scout, Glossary, and Status
+            // touching with no gap at all.
+            for (final (i, button) in _navButtons(context).indexed) ...[
+              if (i > 0) const SizedBox(width: KarumSpacing.sm),
+              button,
+            ],
             for (final action in actions) ...[
               const SizedBox(width: KarumSpacing.sm),
               action,
@@ -135,6 +104,58 @@ class KarumHeader extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// New scout, Glossary, and Status, in that order, filtered to whichever
+  /// actually apply at this width — every one an icon-and-label button, so
+  /// the row reads as one family of controls rather than two buttons with
+  /// icons and one without. Below the 720 px nav breakpoint only Glossary
+  /// keeps a presence, as an icon-only button.
+  List<Widget> _navButtons(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final hideNav = width < 720;
+    return [
+      if (!hideNav && onNewScout != null)
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: TextButton.icon(
+            onPressed: onNewScout,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('New scout'),
+          ),
+        ),
+      // The glossary is reachable from every screen (PLAN.md §51). The full
+      // label fits where the nav fits; on narrow windows an icon-only button
+      // takes its place.
+      if (!hideNav)
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: TextButton.icon(
+            onPressed: () => showGlossarySheet(context),
+            icon: const Icon(Icons.menu_book_rounded, size: 18),
+            label: const Text('Glossary'),
+          ),
+        )
+      else
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: NamedIconButton(
+            label: 'Glossary',
+            onPressed: () => showGlossarySheet(context),
+            icon: Icons.menu_book_rounded,
+            iconSize: 20,
+          ),
+        ),
+      if (!hideNav && onStatus != null)
+        FocusRing(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          child: TextButton.icon(
+            onPressed: onStatus,
+            icon: const Icon(Icons.monitor_heart_outlined, size: 18),
+            label: const Text('Status'),
+          ),
+        ),
+    ];
   }
 }
 

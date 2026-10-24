@@ -69,7 +69,7 @@ How to consume them:
 
 - **Official:** the colour pairs and their contrast ratios, the three type families and the whole type table (sizes, weights, line heights, tracking), mark construction, clear space, minimum sizes, the 480 px header breakpoint, the icon grid, the focus ring, and the lane system.
 - **Derived:** tracking resolved from em to logical pixels; the spacing ramp, built from distances in the guide's own stylesheet and rounded onto a 4 px grid; the 880 px content width and 40 px page inset from the guide's page CSS; the 56 px hero lockup, which matches the guide's reference-page proportions.
-- **Implementation:** the corner radii (14 / 12 / pill) and the flat-plus-hairline elevation — the guide is silent, so the client's existing values were kept deliberately rather than restyling unrelated components; the mode-banner colour mapping (live → brand, fixture → investigate, degraded → avoid), which the guide does not make; anything labelled implementation in the code.
+- **Implementation:** the corner radii (14 / 12 / pill) and the flat-plus-hairline elevation — the guide is silent, so the client's existing values were kept deliberately rather than restyling unrelated components; the mode-banner colour mapping (live → brand, fixture → investigate, degraded → avoid), which the guide does not make; `AppTheme`'s shared button shape and 48 px minimum size for every button kind, and the border `OutlinedButton`/`TextButton` carry in their own text colour so an unfilled button never blends into the page — the guide draws no secondary or "ghost" button, so this keeps every button legible as a control on its own terms; anything labelled implementation in the code.
 
 ## What was replaced
 

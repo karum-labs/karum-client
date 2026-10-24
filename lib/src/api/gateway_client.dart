@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../data/presets.dart';
 import 'auth_models.dart';
 import 'health_status.dart';
 import 'scout_models.dart';
@@ -96,6 +97,20 @@ class GatewayClient {
       timeout: const Duration(seconds: 10),
     );
     return _parse(response, HealthStatus.fromJson);
+  }
+
+  /// Fetches `GET /api/v1/presets`, the locked previous-run catalogue.
+  ///
+  /// The four landing-page previous runs are not hardcoded in the client — this is
+  /// the only place their brand, seed entities, and SKUs come from. The
+  /// route is public: the catalogue is the same for every visitor (PLAN.md
+  /// §52).
+  Future<PresetCatalog> fetchPresets() async {
+    final response = await _get(
+      '/api/v1/presets',
+      timeout: const Duration(seconds: 15),
+    );
+    return _parse(response, PresetCatalog.fromJson);
   }
 
   /// Signs in with an email and password and stores the returned token.

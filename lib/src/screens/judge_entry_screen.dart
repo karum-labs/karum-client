@@ -5,6 +5,7 @@ import '../app/app_scope.dart';
 import '../config/app_flags.dart';
 import '../theme/brand_tokens.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/common.dart';
 import '../widgets/karum_logo.dart';
 
 /// Email/password sign-in, plus the optional hackathon judges banner.
@@ -238,23 +239,25 @@ class _JudgeEntryScreenState extends State<JudgeEntryScreen> {
           const SizedBox(height: KarumSpacing.md),
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: KarumSpacing.xs,
             children: [
               Text(
                 'New here?',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: palette.mute),
               ),
-              TextButton(
+              LinkButton(
+                label: 'Create an account',
                 onPressed: _busy
                     ? null
                     : () => Navigator.of(context).pushNamed('/register'),
-                child: const Text('Create an account'),
               ),
             ],
           ),
-          TextButton(
+          const SizedBox(height: KarumSpacing.xs),
+          LinkButton(
+            label: 'Continue without signing in',
             onPressed: _busy ? null : _openLanding,
-            child: const Text('Continue without signing in'),
           ),
         ],
       ),
@@ -289,7 +292,7 @@ class _JudgesBanner extends StatelessWidget {
           const SizedBox(height: KarumSpacing.xs),
           Text(
             'Skip creating an account. Open the pre-seeded demo, with the '
-            'sample campaigns already attached.',
+            'previous-run campaigns already attached.',
             style: Theme.of(context).textTheme.bodyMedium
                 ?.copyWith(color: palette.mute),
           ),

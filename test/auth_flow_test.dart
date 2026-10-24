@@ -8,6 +8,8 @@ import 'package:karum/main.dart';
 import 'package:karum/src/api/gateway_client.dart';
 import 'package:karum/src/auth/session_storage.dart';
 
+import 'support/fake_gateway.dart' show presetsJson;
+
 http.Response _json(Object body, [int status = 200]) => http.Response(
   jsonEncode(body),
   status,
@@ -45,6 +47,9 @@ class _AuthGateway {
           'hackathon_mode': hackathonMode,
           'time': '2026-10-19T12:00:00Z',
         });
+      }
+      if (request.method == 'GET' && path == '/api/v1/presets') {
+        return _json(presetsJson());
       }
       if (request.method == 'POST' && path == '/api/v1/auth/judge') {
         if (judgeStatus != 200) {
@@ -109,7 +114,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
+      find.text('Sola Yuzu Mezcal in Austin, TX'),
       findsOneWidget,
     );
     expect(find.textContaining('Signed in as'), findsNothing);
@@ -239,7 +244,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX'),
+      find.text('Sola Yuzu Mezcal in Austin, TX'),
       findsOneWidget,
     );
     expect(

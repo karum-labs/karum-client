@@ -3,5 +3,6 @@
 	"editor.formatOnSave": true,
 	"[dart]": {
 		"editor.defaultFormatter": "Dart-Code.dart-code"
-	}
+	},
+	"cmake.sourceDirectory": "/home/nailsonseat/Projects/Karum/karum-client/windows"
 }

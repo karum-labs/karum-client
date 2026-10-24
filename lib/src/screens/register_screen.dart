@@ -4,6 +4,7 @@ import '../api/gateway_client.dart';
 import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/common.dart';
 import '../widgets/karum_logo.dart';
 
 /// Creates an account from an email and password, then signs in.
@@ -79,9 +80,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: KarumSpacing.sm),
               Text(
-                'Email and password. You can still try a sample without an '
-                'account; each sample now runs as its own search, so your '
-                'results stay with you.',
+                'Email and password. You can still try a previous run '
+                'without an account; each one now runs as its own search, '
+                'so your results stay with you.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: palette.mute),
               ),
@@ -164,11 +165,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: KarumSpacing.sm),
-              TextButton(
+              LinkButton(
+                label: 'Already have an account? Sign in',
                 onPressed: _busy
                     ? null
                     : () => Navigator.of(context).pushNamed('/login'),
-                child: const Text('Already have an account? Sign in'),
               ),
             ],
           ),

@@ -10,6 +10,7 @@ import '../app/coach_gate.dart';
 import '../app/routes.dart';
 import '../data/presets.dart';
 import '../theme/brand_tokens.dart';
+import '../widgets/async_states.dart';
 import '../widgets/common.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/karum_chrome.dart';
@@ -47,8 +48,8 @@ class _LandingScreenState extends State<LandingScreen> {
   List<CityCandidate> _candidates = const [];
   String? _idempotencyKey;
 
-  /// The point that came with a sample loaded by "Inspect this seed". It lets
-  /// the sample run without a geocoder key; editing the city clears it.
+  /// The point that came with a previous run loaded by "Inspect this seed". It lets
+  /// it run without a geocoder key; editing the city clears it.
   GeoPoint? _presetPoint;
 
   @override
@@ -71,6 +72,48 @@ class _LandingScreenState extends State<LandingScreen> {
     _idempotencyKey = null;
     _error = null;
     _candidates = const [];
+  }
+
+  /// True once anything in the free-entry form differs from its blank,
+  /// just-loaded state — including text typed but not yet turned into a
+  /// seed/SKU chip. Drives whether the Clear button next to "Run this
+  /// scout" is shown at all.
+  bool get _hasFreeEntryInput =>
+      _city.text.isNotEmpty ||
+      _brand.text.isNotEmpty ||
+      _vibe.text.isNotEmpty ||
+      _sku.text.isNotEmpty ||
+      _seeds.isNotEmpty ||
+      _fallbacks.isNotEmpty ||
+      _skus.isNotEmpty ||
+      _brandQuery.isNotEmpty ||
+      _mode != ScoutMode.wholesale ||
+      _radiusMeters != 8000 ||
+      _presetPoint != null ||
+      !(_tags.length == 1 &&
+          _tags.contains('urn:tag:genre:place:restaurant:bar'));
+
+  /// Resets the free-entry form to the state it loads in. A "locked
+  /// previous run" loaded with "Inspect this seed" counts as input too, so
+  /// Clear also undoes that.
+  void _clearFreeEntry() {
+    setState(() {
+      _city.clear();
+      _brand.clear();
+      _vibe.clear();
+      _sku.clear();
+      _seeds.clear();
+      _fallbacks.clear();
+      _skus.clear();
+      _tags
+        ..clear()
+        ..add('urn:tag:genre:place:restaurant:bar');
+      _mode = ScoutMode.wholesale;
+      _radiusMeters = 8000;
+      _brandQuery = '';
+      _presetPoint = null;
+      _markDirty();
+    });
   }
 
   void _scrollToBuilder() {
@@ -446,11 +489,12 @@ class _LandingScreenState extends State<LandingScreen> {
                       children: [
                         _Hero(
                           compact: width < 900,
-                          onLoadSample: _scrollToBuilder,
-                          onHowItWorks: _scrollToPresets,
+                          onTryNow: _scrollToPresets,
+                          onNewScout: _scrollToBuilder,
+                          presets: scope?.presets,
                         ),
                         const SizedBox(height: 52),
-                        _buildPresetSection(width),
+                        _buildPresetSection(width, scope),
                         const SizedBox(height: 52),
                         _buildBuilder(context, width),
                         const SizedBox(height: KarumSpacing.page),
@@ -470,12 +514,13 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  Widget _buildPresetSection(double width) {
+  Widget _buildPresetSection(double width, AppScope? scope) {
+    final groups = scope?.presets?.groups ?? const <PresetGroup>[];
     return Column(
       key: _presetsKey,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel('Start from a locked sample'),
+        const SectionLabel('Start from a previous run'),
         const SizedBox(height: KarumSpacing.sm),
         Text(
           'The judge path, one click away.',
@@ -483,40 +528,67 @@ class _LandingScreenState extends State<LandingScreen> {
         ),
         const SizedBox(height: KarumSpacing.xs),
         Text(
-          'Each sample posts a stored city, seed (the brand and the taste '
+          'Each one posts a stored city, seed (the brand and the taste '
           'words that describe it), radius, and category tag. No typing, no '
-          'geocoder miss. Each click runs the sample as its own search; the '
-          'result stays with this browser.',
+          'geocoder miss. Each click runs it as its own search; the result '
+          'stays with this browser.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: KarumPalette.of(context).mute),
         ),
         const SizedBox(height: KarumSpacing.xl),
-        if (width >= 1000)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < PresetCatalog.groups.length; i++) ...[
-                if (i > 0) const SizedBox(width: KarumSpacing.lg),
-                Expanded(
-                  child: _PresetCard(
-                    index: i,
-                    group: PresetCatalog.groups[i],
-                    disabled: _submitting,
-                    onRun: _launchPreset,
-                    onInspect: _loadPresetIntoBuilder,
+        // The cards are read from `GET /api/v1/presets`, not hardcoded
+        // (PLAN.md §52), so the section has its own loading and retry states
+        // rather than always-on constants.
+        if (groups.isEmpty && scope?.presetsLoading == true)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: KarumSpacing.xl),
+            child: LoadingState(label: 'Loading previous runs…'),
+          )
+        else if (groups.isEmpty && scope?.presetsError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: KarumSpacing.xl),
+            child: ErrorState(
+              title: 'Previous runs unavailable',
+              message:
+                  'The gateway did not return the previous-run catalogue: '
+                  '${scope?.presetsError}',
+              onRetry: scope?.refreshPresets,
+            ),
+          )
+        else if (width >= 1000)
+          // IntrinsicHeight stretches every card to the tallest one's natural
+          // height (the two-button Brooklyn card), so the row reads as one
+          // even shelf instead of three cards of different heights. Each
+          // card absorbs the extra space with its own Spacer so the button
+          // block still lands at the same baseline on every card.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < groups.length; i++) ...[
+                  if (i > 0) const SizedBox(width: KarumSpacing.lg),
+                  Expanded(
+                    child: _PresetCard(
+                      index: i,
+                      group: groups[i],
+                      disabled: _submitting,
+                      onRun: _launchPreset,
+                      onInspect: _loadPresetIntoBuilder,
+                      equalizeHeight: true,
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           )
         else
           Column(
             children: [
-              for (var i = 0; i < PresetCatalog.groups.length; i++) ...[
+              for (var i = 0; i < groups.length; i++) ...[
                 if (i > 0) const SizedBox(height: KarumSpacing.lg),
                 _PresetCard(
                   index: i,
-                  group: PresetCatalog.groups[i],
+                  group: groups[i],
                   disabled: _submitting,
                   onRun: _launchPreset,
                   onInspect: _loadPresetIntoBuilder,
@@ -753,6 +825,28 @@ class _LandingScreenState extends State<LandingScreen> {
                     label: Text(_submitting ? 'Starting…' : 'Run this scout'),
                   ),
                 );
+                // Only shown once the form has something to clear, and a
+                // Wrap rather than a fixed Row: at narrow widths "Clear" and
+                // "Run this scout" wrap onto their own line instead of
+                // overflowing it.
+                final submitGroup = Wrap(
+                  spacing: KarumSpacing.sm,
+                  runSpacing: KarumSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (_hasFreeEntryInput)
+                      FocusRing(
+                        borderRadius: BorderRadius.circular(
+                          KarumRadius.control,
+                        ),
+                        child: OutlinedButton(
+                          onPressed: _submitting ? null : _clearFreeEntry,
+                          child: const Text('Clear'),
+                        ),
+                      ),
+                    submit,
+                  ],
+                );
                 // Below the official 480 px breakpoint the button drops onto
                 // its own line: side by side, the pair overflows a phone
                 // column instead of wrapping.
@@ -762,7 +856,7 @@ class _LandingScreenState extends State<LandingScreen> {
                     children: [
                       note,
                       const SizedBox(height: KarumSpacing.md),
-                      submit,
+                      submitGroup,
                     ],
                   );
                 }
@@ -771,7 +865,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   children: [
                     Expanded(child: note),
                     const SizedBox(width: KarumSpacing.lg),
-                    submit,
+                    submitGroup,
                   ],
                 );
               },
@@ -788,7 +882,7 @@ class _LandingScreenState extends State<LandingScreen> {
       enabled: !_submitting,
       textInputAction: TextInputAction.next,
       onChanged: (_) => setState(() {
-        // A typed city no longer matches the sample's stored point.
+        // A typed city no longer matches the previous run's stored point.
         _presetPoint = null;
         _markDirty();
       }),
@@ -872,9 +966,10 @@ class _LandingScreenState extends State<LandingScreen> {
 
   List<KnownSeed> get _brandSuggestions {
     if (_brand.text.trim().length < 2 || _seeds.length >= 4) return const [];
-    return PresetCatalog.knownSeeds
-        .where((known) => known.matches(_brand.text))
-        .where((known) => !_seeds.any((seed) => seed.id == known.entity.id))
+    final known = AppScope.maybeOf(context)?.presets?.knownSeeds ?? const [];
+    return known
+        .where((entry) => entry.matches(_brand.text))
+        .where((entry) => !_seeds.any((seed) => seed.id == entry.entity.id))
         .take(4)
         .toList(growable: false);
   }
@@ -914,6 +1009,7 @@ class _LandingScreenState extends State<LandingScreen> {
       controller: _vibe,
       enabled: !_submitting,
       textInputAction: TextInputAction.done,
+      onChanged: (_) => setState(_markDirty),
       onSubmitted: (_) => _addFallback(),
       decoration: InputDecoration(
         labelText: 'Vibe chips',
@@ -935,6 +1031,7 @@ class _LandingScreenState extends State<LandingScreen> {
       controller: _sku,
       enabled: !_submitting,
       textInputAction: TextInputAction.done,
+      onChanged: (_) => setState(_markDirty),
       onSubmitted: (_) => _addSku(),
       decoration: InputDecoration(
         labelText: 'Brand SKUs',
@@ -954,13 +1051,24 @@ class _LandingScreenState extends State<LandingScreen> {
 class _Hero extends StatelessWidget {
   const _Hero({
     required this.compact,
-    required this.onLoadSample,
-    required this.onHowItWorks,
+    required this.onTryNow,
+    required this.onNewScout,
+    required this.presets,
   });
 
   final bool compact;
-  final VoidCallback onLoadSample;
-  final VoidCallback onHowItWorks;
+
+  /// "Try now" — jumps straight to the previous-run cards.
+  final VoidCallback onTryNow;
+
+  /// "New scout" — jumps to the free-entry builder ("Build a search
+  /// instead."), matching the header's own "New scout" action.
+  final VoidCallback onNewScout;
+
+  /// The fetched previous-run catalogue, or null while it is still loading.
+  /// The proof strip renders nothing rather than a stale, hardcoded list
+  /// while it waits (PLAN.md §52).
+  final PresetCatalog? presets;
 
   @override
   Widget build(BuildContext context) {
@@ -996,16 +1104,17 @@ class _Hero extends StatelessWidget {
         FocusRing(
           borderRadius: BorderRadius.circular(KarumRadius.control),
           child: FilledButton.icon(
-            onPressed: onLoadSample,
+            onPressed: onTryNow,
             icon: const Icon(Icons.play_arrow_rounded, size: 18),
-            label: const Text('Load a sample'),
+            label: const Text('Try now'),
           ),
         ),
         FocusRing(
           borderRadius: BorderRadius.circular(KarumRadius.control),
-          child: TextButton(
-            onPressed: onHowItWorks,
-            child: const Text('How it works'),
+          child: TextButton.icon(
+            onPressed: onNewScout,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('New scout'),
           ),
         ),
       ],
@@ -1064,10 +1173,7 @@ class _Hero extends StatelessWidget {
             runSpacing: KarumSpacing.sm,
             children: [
               for (final city in _presetCities)
-                _Proof(
-                  label: 'Yes, $city',
-                  detail: _proofDetail(city),
-                ),
+                _Proof(label: 'Yes, $city', detail: _proofDetail(city)),
               _modeProof(context),
             ],
           ),
@@ -1088,9 +1194,10 @@ class _Hero extends StatelessWidget {
   }
 
   /// The cities the locked catalogue can run, in server order, deduplicated.
+  /// Empty while the catalogue is still loading.
   List<String> get _presetCities {
     final out = <String>{};
-    for (final preset in PresetCatalog.all) {
+    for (final preset in presets?.all ?? const <KarumPreset>[]) {
       out.add(preset.city.split(',').first.trim());
     }
     return out.toList()..sort();
@@ -1134,15 +1241,19 @@ class _HeroPreview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                'RECORDED RUN',
-                style: text.labelSmall?.copyWith(
-                  color: palette.brand,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
+              Expanded(
+                child: Text(
+                  'PREVIOUS SEARCH',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: palette.brand,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: KarumSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -1151,7 +1262,7 @@ class _HeroPreview extends StatelessWidget {
                   border: Border.all(color: palette.line),
                 ),
                 child: Text(
-                  'SAMPLE 01',
+                  'RUN 01',
                   style: text.labelSmall?.copyWith(
                     color: palette.mute,
                     letterSpacing: 0.6,
@@ -1163,10 +1274,7 @@ class _HeroPreview extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             'Sola in Austin',
-            style: text.titleLarge?.copyWith(
-              fontSize: 22,
-              color: palette.ink,
-            ),
+            style: text.titleLarge?.copyWith(fontSize: 22, color: palette.ink),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1184,11 +1292,7 @@ class _HeroPreview extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 14,
-                color: palette.brand,
-              ),
+              Icon(Icons.receipt_long_outlined, size: 14, color: palette.brand),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -1294,6 +1398,7 @@ class _PresetCard extends StatelessWidget {
     required this.disabled,
     required this.onRun,
     required this.onInspect,
+    this.equalizeHeight = false,
   });
 
   final int index;
@@ -1301,6 +1406,57 @@ class _PresetCard extends StatelessWidget {
   final bool disabled;
   final ValueChanged<KarumPreset> onRun;
   final ValueChanged<KarumPreset> onInspect;
+
+  /// True in the side-by-side desktop grid, where an enclosing
+  /// `IntrinsicHeight` gives every card the tallest one's height and this
+  /// card needs a `Spacer` to push its button block to that shared bottom
+  /// edge. False in the single-column narrow layout, where the cards stack
+  /// vertically and each should keep its own natural height — a `Spacer`
+  /// there has no bounded height to expand into and crashes the layout.
+  final bool equalizeHeight;
+
+  /// The button used to read "Try Sample: Sola Yuzu Mezcal in Austin, TX" —
+  /// repeating the brand and city the card's own title and subtitle already
+  /// show. Strips the server's "Try: " prefix so just the distinguishing
+  /// detail (the part after it) moves into the card body, and the button
+  /// itself can shrink to "Run again" (PLAN.md §56).
+  static String _runDetail(KarumPreset preset) {
+    final label = preset.buttonLabel;
+    final sep = label.indexOf(': ');
+    return sep == -1 ? label : label.substring(sep + 2);
+  }
+
+  Widget _runRow(
+    BuildContext context,
+    KarumPreset preset, {
+    required bool filled,
+  }) {
+    final palette = KarumPalette.of(context);
+    final button = FocusRing(
+      borderRadius: BorderRadius.circular(KarumRadius.control),
+      child: filled
+          ? FilledButton(
+              onPressed: disabled ? null : () => onRun(preset),
+              child: const Text('Run again'),
+            )
+          : OutlinedButton(
+              onPressed: disabled ? null : () => onRun(preset),
+              child: const Text('Run again'),
+            ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _runDetail(preset),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: palette.mute),
+        ),
+        const SizedBox(height: KarumSpacing.xs),
+        button,
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1310,26 +1466,40 @@ class _PresetCard extends StatelessWidget {
         padding: const EdgeInsets.all(KarumSpacing.xl2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          // MainAxisSize.max only makes sense when an ancestor (the desktop
+          // row's IntrinsicHeight) actually gives this column a bounded
+          // height to fill.
+          mainAxisSize: equalizeHeight ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Row(
               children: [
-                Text(
-                  'SAMPLE ${(index + 1).toString().padLeft(2, '0')}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: palette.brand,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
+                Expanded(
+                  child: Text(
+                    'PREVIOUS RUN ${(index + 1).toString().padLeft(2, '0')}',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: palette.brand,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Icon(
-                  Icons.arrow_outward_rounded,
-                  size: 16,
-                  color: palette.mute,
+                // Moved up from the card's bottom action: it still hands the
+                // free-entry builder this run's stored seed, city, and tags
+                // to edit by hand, exactly as "Inspect this seed" did.
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: NamedIconButton(
+                    label: 'Inspect this seed',
+                    onPressed: disabled
+                        ? null
+                        : () => onInspect(group.variants.first),
+                    icon: Icons.tune_rounded,
+                    iconSize: 18,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: KarumSpacing.lg),
+            const SizedBox(height: KarumSpacing.md),
             Text(
               group.name,
               style: Theme.of(context).textTheme.titleLarge
@@ -1348,42 +1518,20 @@ class _PresetCard extends StatelessWidget {
                   ?.copyWith(color: palette.mute),
             ),
             const SizedBox(height: KarumSpacing.xl),
+            // Absorbs the slack IntrinsicHeight adds so every card's button
+            // block lands on the same baseline regardless of how many lines
+            // the description above wrapped to. Only valid when the column
+            // has a bounded height to expand into (see [equalizeHeight]).
+            if (equalizeHeight) const Spacer(),
             if (group.variants.length == 1)
-              SizedBox(
-                width: double.infinity,
-                child: FocusRing(
-                  borderRadius: BorderRadius.circular(KarumRadius.control),
-                  child: FilledButton(
-                    onPressed: disabled
-                        ? null
-                        : () => onRun(group.variants.first),
-                    child: Text(group.variants.first.buttonLabel),
-                  ),
-                ),
-              )
+              _runRow(context, group.variants.first, filled: true)
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FocusRing(
-                    borderRadius: BorderRadius.circular(KarumRadius.control),
-                    child: FilledButton(
-                      onPressed: disabled
-                          ? null
-                          : () => onRun(group.variants.first),
-                      child: Text(group.variants.first.buttonLabel),
-                    ),
-                  ),
-                  const SizedBox(height: KarumSpacing.sm),
-                  FocusRing(
-                    borderRadius: BorderRadius.circular(KarumRadius.control),
-                    child: OutlinedButton(
-                      onPressed: disabled
-                          ? null
-                          : () => onRun(group.variants[1]),
-                      child: Text(group.variants[1].buttonLabel),
-                    ),
-                  ),
+                  _runRow(context, group.variants.first, filled: true),
+                  const SizedBox(height: KarumSpacing.md),
+                  _runRow(context, group.variants[1], filled: false),
                   // First place the brand's two mode words appear beside
                   // each other; one line of gloss keeps a first-time
                   // visitor from having to open the glossary (PLAN.md §51).
@@ -1400,16 +1548,6 @@ class _PresetCard extends StatelessWidget {
                   ),
                 ],
               ),
-            const SizedBox(height: KarumSpacing.sm),
-            FocusRing(
-              borderRadius: BorderRadius.circular(KarumRadius.control),
-              child: TextButton(
-                onPressed: disabled
-                    ? null
-                    : () => onInspect(group.variants.first),
-                child: const Text('Inspect this seed'),
-              ),
-            ),
           ],
         ),
       ),

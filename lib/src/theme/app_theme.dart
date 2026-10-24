@@ -146,17 +146,65 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      // One shape and tap-target size for every button kind. Filled,
+      // outlined, and text buttons used to agree on neither: only
+      // FilledButton carried `KarumRadius.control` and a 48 px minimum, so an
+      // unthemed OutlinedButton or TextButton fell back to Material 3's own
+      // defaults (a fully rounded stadium shape and a 40 px minimum) and sat
+      // visibly out of step beside a themed one on the same row — "Try now"
+      // next to "New scout" is the pair that surfaced it. `control` was
+      // already documented as the radius for "inputs, buttons, and banners"
+      // (`KarumRadius.control`); only the FilledButton theme had ever
+      // actually used it.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(KarumRadius.control),
-          ),
+          minimumSize: _buttonMinimumSize,
+          shape: _buttonShape,
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: _buttonMinimumSize,
+          shape: _buttonShape,
+        ).copyWith(side: _buttonBorderMatchingText(scheme)),
+      ),
+      // A TextButton has no fill and, unstyled, no border either — against a
+      // dark page it reads as a label, not a control. The guide draws no
+      // "ghost button," so this is an implementation decision: give it a
+      // border in the same colour as its own text, at both the enabled and
+      // the disabled opacity, so every button on the page is legible as a
+      // button before it is pressed (BRAND.md records this as implementation).
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: _buttonMinimumSize,
+          shape: _buttonShape,
+        ).copyWith(side: _buttonBorderMatchingText(scheme)),
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
+
+  /// The one corner radius every button kind shares — implementation, not
+  /// brand-specified (see `BRAND.md`'s "Official, derived, implementation").
+  static final RoundedRectangleBorder _buttonShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(KarumRadius.control),
+  );
+
+  /// The one minimum tap target every button kind shares.
+  static const Size _buttonMinimumSize = Size(48, 48);
+
+  /// A border that always matches the button's own text colour, at the same
+  /// enabled/disabled opacity [TextButton] and [OutlinedButton] already use
+  /// for their foreground — so a button with no fill still reads as a button
+  /// against the page instead of as a floating label.
+  static WidgetStateProperty<BorderSide> _buttonBorderMatchingText(
+    ColorScheme scheme,
+  ) => WidgetStateProperty.resolveWith((states) {
+    final color = states.contains(WidgetState.disabled)
+        ? scheme.onSurface.withValues(alpha: 0.38)
+        : scheme.primary;
+    return BorderSide(color: color);
+  });
 }

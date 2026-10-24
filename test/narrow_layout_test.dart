@@ -59,8 +59,10 @@ void main() {
 
     // Both hero actions are on screen, and the page laid out without a
     // RenderFlex overflow stripe.
-    expect(find.text('Load a sample'), findsOneWidget);
-    expect(find.text('How it works'), findsOneWidget);
+    expect(find.text('Try now'), findsOneWidget);
+    // Below the 720 px nav breakpoint the header's own "New scout" button is
+    // hidden, so only the hero's remains.
+    expect(find.text('New scout'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

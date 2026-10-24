@@ -18,8 +18,16 @@ void main() {
     await tester.pumpWidget(KarumApp(client: gateway.client()));
     await tester.pumpAndSettle();
 
-    // The landing renders the locked samples.
-    final preset = find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX');
+    // The landing renders the locked previous runs. The detail text moved
+    // off the button and into the card body (PLAN.md §56); find the card by
+    // its unique detail text, then its own "Run again" button.
+    final detail = find.text('Sola Yuzu Mezcal in Austin, TX');
+    expect(detail, findsOneWidget);
+    final austinCard = find.ancestor(of: detail, matching: find.byType(Card));
+    final preset = find.descendant(
+      of: austinCard,
+      matching: find.text('Run again'),
+    );
     expect(preset, findsOneWidget);
 
     await tester.ensureVisible(preset);
@@ -44,7 +52,7 @@ void main() {
     expect(find.text('Spring menu'), findsOneWidget);
   });
 
-  testWidgets('inspecting a sample carries its stored point into free entry', (
+  testWidgets('inspecting a previous run carries its stored point into free entry', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -55,7 +63,10 @@ void main() {
     await tester.pumpWidget(KarumApp(client: gateway.client()));
     await tester.pumpAndSettle();
 
-    final inspect = find.text('Inspect this seed').first;
+    // "Inspect this seed" is now an icon button in the card's top-right
+    // corner (PLAN.md §56); its accessible name is its tooltip, not a
+    // visible Text widget.
+    final inspect = find.byTooltip('Inspect this seed').first;
     await tester.ensureVisible(inspect);
     await tester.pumpAndSettle();
     await tester.tap(inspect);
@@ -140,4 +151,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Whisler's"), findsWidgets);
   });
+
+  testWidgets(
+    'the free-entry Clear button only appears once a field is filled, and resets the form',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final gateway = FakeGateway();
+      await tester.pumpWidget(KarumApp(client: gateway.client()));
+      await tester.pumpAndSettle();
+
+      final builder = find.byKey(const Key('free-entry-submit'));
+      await tester.ensureVisible(builder);
+      await tester.pumpAndSettle();
+
+      // Nothing typed yet: no Clear button next to "Run this scout".
+      expect(find.text('Clear'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'City'), 'Austin');
+      await tester.pumpAndSettle();
+
+      final clear = find.text('Clear');
+      expect(clear, findsOneWidget);
+
+      await tester.tap(clear);
+      await tester.pumpAndSettle();
+
+      // Typing cleared, and the button disappears again.
+      final cityField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'City'),
+      );
+      expect(cityField.controller!.text, isEmpty);
+      expect(find.text('Clear'), findsNothing);
+    },
+  );
 }

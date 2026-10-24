@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
+import 'focus_ring.dart';
 
 /// An icon button that carries an accessible name.
 ///
@@ -406,6 +407,59 @@ class PanePlaceholder extends StatelessWidget {
                   ?.copyWith(color: palette.mute),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A plain, pressable line of text — not a filled or outlined control — for
+/// a secondary action that should read as a link rather than a button, the
+/// way "Continue as guest" or "Already have an account? Sign in" reads on
+/// most sign-in pages. The guide specifies no such control, so this is an
+/// implementation decision (`BRAND.md`): no fill, no border, underlined text
+/// in the button's own colour, with the same focus ring every other control
+/// in the app carries.
+class LinkButton extends StatelessWidget {
+  const LinkButton({super.key, required this.label, this.onPressed});
+
+  /// The link's visible text and accessible name.
+  final String label;
+
+  /// What the link does; null renders it disabled.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final enabled = onPressed != null;
+    final color = enabled ? palette.brand : palette.mute;
+    return FocusRing(
+      borderRadius: BorderRadius.circular(KarumRadius.control),
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          excludeFromSemantics: true,
+          child: Padding(
+            // Close to the 48 px guideline height without turning a line of
+            // text into a visible button box.
+            padding: const EdgeInsets.symmetric(
+              horizontal: KarumSpacing.xs,
+              vertical: KarumSpacing.sm,
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: color,
+              ),
+            ),
+          ),
         ),
       ),
     );

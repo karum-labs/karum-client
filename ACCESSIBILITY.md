@@ -81,7 +81,7 @@ The guide publishes the focus treatment as official: **3 px of brand colour, off
   on the button's own edge would be brand on brand and would not read at all.
 
 The ring is on the judge path: the mode pills, the category chips, the free-entry
-call to action, the hero sample, the preset buttons, the header's back, home, new
+call to action, the hero previous-run preview, the preset buttons, the header's back, home, new
 scout, status and sign in, the account page's campaign cards, start-a-scout and
 browse buttons, the board's **Pitch & route**, Evidence and regenerate, the pitch
 screen's download, evidence, copy and regenerate, and the evidence sheet's close.

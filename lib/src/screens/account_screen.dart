@@ -4,6 +4,7 @@ import '../api/auth_models.dart';
 import '../app/app_scope.dart';
 import '../data/presets.dart';
 import '../theme/brand_tokens.dart';
+import '../widgets/async_states.dart';
 import '../widgets/common.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/karum_chrome.dart';
@@ -149,6 +150,28 @@ class _CampaignGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scope = AppScope.maybeOf(context);
+    final presets = scope?.presets?.all ?? const <KarumPreset>[];
+    // The cards are the fetched catalogue, not hardcoded Dart constants
+    // (PLAN.md §52), so the grid has its own loading and retry states.
+    if (presets.isEmpty && scope?.presetsLoading == true) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: KarumSpacing.xl),
+        child: LoadingState(label: 'Loading campaigns…'),
+      );
+    }
+    if (presets.isEmpty && scope?.presetsError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: KarumSpacing.xl),
+        child: ErrorState(
+          title: 'Campaigns unavailable',
+          message:
+              'The gateway did not return the preset catalogue: '
+              '${scope?.presetsError}',
+          onRetry: scope?.refreshPresets,
+        ),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = KarumSpacing.lg;
@@ -159,7 +182,7 @@ class _CampaignGrid extends StatelessWidget {
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final preset in PresetCatalog.all)
+            for (final preset in presets)
               SizedBox(
                 width: cardWidth,
                 child: _CampaignCard(preset: preset),
@@ -254,9 +277,9 @@ class _EmptyCampaigns extends StatelessWidget {
             ),
             const SizedBox(height: KarumSpacing.xs),
             Text(
-              'Start a search from the landing page. The four public samples '
-              'run without an account; the result stays with the browser that '
-              'started it.',
+              'Start a search from the landing page. The four public previous '
+              'runs work without an account; the result stays with the '
+              'browser that started it.',
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: palette.mute),
             ),

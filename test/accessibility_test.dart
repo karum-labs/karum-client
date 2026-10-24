@@ -299,7 +299,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Run the Austin preset so the workspace shows the door board.
-      final preset = find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX');
+      final detail = find.text('Sola Yuzu Mezcal in Austin, TX');
+      final austinCard = find.ancestor(
+        of: detail,
+        matching: find.byType(Card),
+      );
+      final preset = find.descendant(
+        of: austinCard,
+        matching: find.text('Run again'),
+      );
       await tester.ensureVisible(preset);
       await tester.pumpAndSettle();
       await tester.tap(preset);
@@ -328,7 +336,15 @@ void main() {
       await tester.pumpWidget(KarumApp(client: gateway.client()));
       await tester.pumpAndSettle();
 
-      final preset = find.text('Try Sample: Sola Yuzu Mezcal in Austin, TX');
+      final detail = find.text('Sola Yuzu Mezcal in Austin, TX');
+      final austinCard = find.ancestor(
+        of: detail,
+        matching: find.byType(Card),
+      );
+      final preset = find.descendant(
+        of: austinCard,
+        matching: find.text('Run again'),
+      );
       await tester.ensureVisible(preset);
       await tester.pumpAndSettle();
       await tester.tap(preset);

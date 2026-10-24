@@ -16,6 +16,12 @@ class SeedEntity {
     return tail.isEmpty ? 'entity' : tail;
   }
 
+  factory SeedEntity.fromJson(Map<String, dynamic> json) => SeedEntity(
+    id: (json['id'] ?? '').toString(),
+    name: (json['name'] ?? '').toString(),
+    type: (json['type'] ?? '').toString(),
+  );
+
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'type': type};
 }
 

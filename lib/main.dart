@@ -7,6 +7,7 @@ import 'src/app/app_scope.dart';
 import 'src/app/routes.dart';
 import 'src/auth/session_storage.dart';
 import 'src/config/app_flags.dart';
+import 'src/data/presets.dart';
 import 'src/screens/account_screen.dart';
 import 'src/screens/door_pitch_screen.dart';
 import 'src/screens/home_screen.dart';
@@ -57,6 +58,9 @@ class _KarumAppState extends State<KarumApp> {
   HealthStatus? _health;
   Object? _healthError;
   bool _healthLoading = true;
+  PresetCatalog? _presets;
+  Object? _presetsError;
+  bool _presetsLoading = true;
   AuthSession? _session;
   bool _authResolving = true;
 
@@ -76,7 +80,9 @@ class _KarumAppState extends State<KarumApp> {
 
   Future<void> _bootstrap() async {
     await _restoreSession();
-    await _refreshHealth();
+    // Health and the preset catalogue are independent reads; fetching them
+    // together halves the time to the first paint of the landing page.
+    await Future.wait([_refreshHealth(), _refreshPresets()]);
   }
 
   /// Restores a saved browser session and validates it with `/auth/me`.
@@ -118,6 +124,30 @@ class _KarumAppState extends State<KarumApp> {
       setState(() {
         _healthError = error;
         _healthLoading = false;
+      });
+    }
+  }
+
+  /// Fetches the locked previous-run catalogue. Unlike health, a failure here does
+  /// not take the whole app offline — the landing page's previous-run section
+  /// shows its own retry state and every other screen works without it.
+  Future<void> _refreshPresets() async {
+    if (mounted) {
+      setState(() => _presetsLoading = true);
+    }
+    try {
+      final presets = await _client.fetchPresets();
+      if (!mounted) return;
+      setState(() {
+        _presets = presets;
+        _presetsError = null;
+        _presetsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _presetsError = error;
+        _presetsLoading = false;
       });
     }
   }
@@ -182,6 +212,10 @@ class _KarumAppState extends State<KarumApp> {
         healthError: _healthError,
         refreshHealth: _refreshHealth,
         hackathonMode: _health?.hackathonMode ?? false,
+        presets: _presets,
+        presetsLoading: _presetsLoading,
+        presetsError: _presetsError,
+        refreshPresets: _refreshPresets,
         session: _session,
         authResolving: _authResolving,
         signIn: _signIn,

@@ -4,6 +4,7 @@ import '../api/auth_models.dart';
 import '../api/gateway_client.dart';
 import '../api/health_status.dart';
 import '../config/app_flags.dart';
+import '../data/presets.dart';
 
 /// The gateway client, health snapshot, and judge session shared by every route.
 ///
@@ -18,6 +19,10 @@ class AppScope extends InheritedWidget {
     required this.healthError,
     required this.refreshHealth,
     required this.hackathonMode,
+    required this.presets,
+    required this.presetsLoading,
+    required this.presetsError,
+    required this.refreshPresets,
     required this.session,
     required this.authResolving,
     required this.signIn,
@@ -47,6 +52,19 @@ class AppScope extends InheritedWidget {
   /// This enables the passwordless demo route. The login banner is a separate
   /// client flag, [AppFlags.showJudgesBanner].
   final bool hackathonMode;
+
+  /// The locked previous-run catalogue, fetched from `GET /api/v1/presets`, or null
+  /// while the first request is in flight or has not been started.
+  final PresetCatalog? presets;
+
+  /// True while [refreshPresets] is running.
+  final bool presetsLoading;
+
+  /// The last presets-fetch failure, or null.
+  final Object? presetsError;
+
+  /// Re-fetches `/api/v1/presets` and rebuilds dependants.
+  final Future<void> Function() refreshPresets;
 
   /// The current session, or null when exploring anonymously.
   final AuthSession? session;
@@ -85,6 +103,9 @@ class AppScope extends InheritedWidget {
       healthLoading != oldWidget.healthLoading ||
       healthError != oldWidget.healthError ||
       hackathonMode != oldWidget.hackathonMode ||
+      presets != oldWidget.presets ||
+      presetsLoading != oldWidget.presetsLoading ||
+      presetsError != oldWidget.presetsError ||
       session != oldWidget.session ||
       authResolving != oldWidget.authResolving;
 }

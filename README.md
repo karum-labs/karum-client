@@ -77,13 +77,21 @@ judge sign-in flow, and the documented keyboard path and contrast table in
 
 The banner colours are implementation-defined: live takes the brand teal, the previous-attempt banner takes the Investigate amber, and degraded the Avoid red — the lanes the guide already uses for caution and for a stated problem (see [BRAND.md](BRAND.md)).
 
-## Samples and account scope
+## Previous runs and account scope
 
-The landing page's samples run anonymously by default. A sample started
-without a signed-in session is its own search: it does not read back the
-judge account's prior run through the shared campaign id. The judge's
+The landing page's previous-run cards run anonymously by default. One
+started without a signed-in session is its own search: it does not read back
+the judge account's prior run through the shared campaign id. The judge's
 pre-seeded campaigns stay on the account page (`/account`) and open through
 `/campaigns/<id>` as before. See `PLAN.md` §49 for the server-side scope.
+
+The four previous-run cards themselves (brand, seed entities, SKUs, copy) are not
+hardcoded in this repo. They are fetched from `GET /api/v1/presets` at
+startup (`GatewayClient.fetchPresets`, `data/presets.dart`), the same way the
+client fetches `/health`. `karum-server/internal/presets` is the one place
+this data is authored; the client has its own loading and error state for
+this fetch so a presets outage does not block the rest of the app. See
+`PLAN.md` §52.
 
 ## Glossary
 
