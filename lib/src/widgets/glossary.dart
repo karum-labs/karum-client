@@ -120,26 +120,18 @@ class GlossTag extends StatelessWidget {
           decoration: BoxDecoration(
             color: palette.brand.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(KarumRadius.pill),
-            border: Border.all(
-              color: palette.brand.withValues(alpha: 0.30),
-            ),
+            border: Border.all(color: palette.brand.withValues(alpha: 0.30)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 match.term,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: palette.ink,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(color: palette.ink, fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 4),
-              Icon(
-                Icons.help_outline_rounded,
-                size: 12,
-                color: palette.mute,
-              ),
+              Icon(Icons.help_outline_rounded, size: 12, color: palette.mute),
             ],
           ),
         ),

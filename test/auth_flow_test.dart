@@ -113,10 +113,7 @@ void main() {
     await tester.pumpWidget(KarumApp(client: gateway.client()));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Sola Yuzu Mezcal in Austin, TX'),
-      findsOneWidget,
-    );
+    expect(find.text('Sola Yuzu Mezcal in Austin, TX'), findsOneWidget);
     expect(find.textContaining('Signed in as'), findsNothing);
     expect(find.textContaining('Judge mode'), findsNothing);
     expect(
@@ -243,10 +240,7 @@ void main() {
     await tester.tap(find.text('Continue without signing in'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Sola Yuzu Mezcal in Austin, TX'),
-      findsOneWidget,
-    );
+    expect(find.text('Sola Yuzu Mezcal in Austin, TX'), findsOneWidget);
     expect(
       gateway.requests.any((r) => r.url.path == '/api/v1/auth/judge'),
       isFalse,

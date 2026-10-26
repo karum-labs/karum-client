@@ -12,7 +12,8 @@ void main() {
     home: Scaffold(
       body: Builder(
         builder: (context) => TextButton(
-          onPressed: () => showEvidenceSheet(context, campaign: campaign, door: door),
+          onPressed: () =>
+              showEvidenceSheet(context, campaign: campaign, door: door),
           child: const Text('open'),
         ),
       ),
@@ -28,39 +29,42 @@ void main() {
     doors: [door],
   );
 
-  testWidgets('the drawer renders the contributions and the demographic profile', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(900, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'the drawer renders the contributions and the demographic profile',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final door = Door(
-      id: 'd-1',
-      name: "Whisler's",
-      rank: 1,
-      scores: ScoreSet(culturalAffinity: ScoreTerm(value: 0.91, source: 'model_inference')),
-      explainability: const [
-        Explainability(entityId: 'e-1', label: 'Ilegal Mezcal', score: 0.62),
-      ],
-      demographics: const Demographics(
-        ageBuckets: [DemographicBucket(label: '25_34', delta: 0.12)],
-        maleDelta: 0.03,
-        femaleDelta: -0.04,
-      ),
-    );
+      final door = Door(
+        id: 'd-1',
+        name: "Whisler's",
+        rank: 1,
+        scores: ScoreSet(
+          culturalAffinity: ScoreTerm(value: 0.91, source: 'model_inference'),
+        ),
+        explainability: const [
+          Explainability(entityId: 'e-1', label: 'Ilegal Mezcal', score: 0.62),
+        ],
+        demographics: const Demographics(
+          ageBuckets: [DemographicBucket(label: '25_34', delta: 0.12)],
+          maleDelta: 0.03,
+          femaleDelta: -0.04,
+        ),
+      );
 
-    await tester.pumpWidget(harness(campaignWith(door), door));
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(harness(campaignWith(door), door));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('AFFINITY INPUTS'), findsOneWidget);
-    expect(find.text('Ilegal Mezcal'), findsOneWidget);
-    expect(find.text('0.620'), findsOneWidget);
-    expect(find.text('DEMOGRAPHICS'), findsOneWidget);
-    expect(find.text('25_34'), findsOneWidget);
-    expect(find.text('+0.12'), findsOneWidget);
-    expect(find.text('Male +0.03 · female -0.04'), findsOneWidget);
-  });
+      expect(find.text('AFFINITY INPUTS'), findsOneWidget);
+      expect(find.text('Ilegal Mezcal'), findsOneWidget);
+      expect(find.text('0.620'), findsOneWidget);
+      expect(find.text('DEMOGRAPHICS'), findsOneWidget);
+      expect(find.text('25_34'), findsOneWidget);
+      expect(find.text('+0.12'), findsOneWidget);
+      expect(find.text('Male +0.03 · female -0.04'), findsOneWidget);
+    },
+  );
 
   testWidgets('a door with no reported evidence says so, and never guesses', (
     tester,
@@ -72,7 +76,9 @@ void main() {
       id: 'd-2',
       name: 'Here Nor There',
       rank: 1,
-      scores: ScoreSet(culturalAffinity: ScoreTerm(value: 0.64, source: 'model_inference')),
+      scores: ScoreSet(
+        culturalAffinity: ScoreTerm(value: 0.64, source: 'model_inference'),
+      ),
     );
 
     await tester.pumpWidget(harness(campaignWith(door), door));
@@ -83,6 +89,9 @@ void main() {
       find.textContaining('Qloo reported no per-input contribution'),
       findsOneWidget,
     );
-    expect(find.textContaining('No demographic profile came back'), findsOneWidget);
+    expect(
+      find.textContaining('No demographic profile came back'),
+      findsOneWidget,
+    );
   });
 }

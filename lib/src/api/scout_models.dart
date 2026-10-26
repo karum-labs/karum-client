@@ -590,9 +590,9 @@ class Door {
     pitch: json['pitch'] is Map ? Pitch.fromJson(_map(json['pitch'])) : null,
     menu: json['menu'] is Map ? MenuFinding.fromJson(_map(json['menu'])) : null,
     evidenceIds: _stringList(json['evidence_ids']),
-    explainability: _list(
-      json['explainability'],
-    ).map(Explainability.fromJson).toList(),
+    explainability: _list(json['explainability'])
+        .map(Explainability.fromJson)
+        .toList(),
     demographics: json['demographics'] is Map
         ? Demographics.fromJson(_map(json['demographics']))
         : null,

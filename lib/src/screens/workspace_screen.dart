@@ -11,6 +11,7 @@ import '../widgets/async_states.dart';
 import '../widgets/coach_overlay.dart';
 import '../widgets/common.dart';
 import '../widgets/door_board.dart';
+import '../widgets/focus_ring.dart';
 import '../widgets/karum_chrome.dart';
 import '../widgets/map_panel.dart';
 import '../widgets/trace_panel.dart';
@@ -52,6 +53,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   bool _canceling = false;
   bool _downloading = false;
   String? _regeneratingDoorId;
+  final Set<String> _closedPanes = {};
   int _pollFailures = 0;
   bool _refreshing = false;
   bool _coachShown = false;
@@ -153,7 +155,9 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
           : 'The job ended without a campaign payload.';
       return;
     }
-    _startLive();
+    if (!_closedPanes.contains('trace')) {
+      _startLive();
+    }
   }
 
   void _applyCampaign(Campaign campaign) {
@@ -373,6 +377,21 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     }
   }
 
+  void _reopenTrace() {
+    setState(() {
+      _closedPanes.remove('trace');
+    });
+    if (_job != null && !_job!.state.isTerminal) {
+      _startLive();
+    }
+  }
+
+  void _reopenBoard() {
+    setState(() {
+      _closedPanes.remove('board');
+    });
+  }
+
   void _openDoor(Door door) {
     final id = _effectiveJobId;
     if (id == null) return;
@@ -514,14 +533,18 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          width: 330,
-          child: TracePanel(
-            events: _events,
-            state: _job?.state ?? JobState.unknown,
-            sseDropped: _sseDropped,
-            polling: _polling,
-            error: _pollFailures >= 4 ? _streamError : null,
-          ),
+          width: _closedPanes.contains('trace') ? PaneStrip.stripWidth : 330,
+          child: _closedPanes.contains('trace')
+              ? PaneStrip(label: 'Live trace', onReopen: _reopenTrace)
+              : TracePanel(
+                  events: _events,
+                  state: _job?.state ?? JobState.unknown,
+                  sseDropped: _sseDropped,
+                  polling: _polling,
+                  error: _pollFailures >= 4 ? _streamError : null,
+                  isClosed: false,
+                  onClose: () => setState(() => _closedPanes.add('trace')),
+                ),
         ),
         VerticalDivider(width: 1, color: KarumPalette.of(context).line),
         Expanded(
@@ -531,14 +554,18 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
         ),
         VerticalDivider(width: 1, color: KarumPalette.of(context).line),
         SizedBox(
-          width: 450,
+          width: _closedPanes.contains('board') ? PaneStrip.stripWidth : 450,
           child: _campaign == null
               ? const _BoardPlaceholder()
+              : _closedPanes.contains('board')
+              ? PaneStrip(label: 'Door board', onReopen: _reopenBoard)
               : DoorBoard(
                   campaign: _campaign!,
                   onOpenPitch: _openDoor,
                   onRegenerate: _regenerate,
                   regeneratingDoorId: _regeneratingDoorId,
+                  isClosed: false,
+                  onClose: () => setState(() => _closedPanes.add('board')),
                 ),
         ),
       ],
@@ -547,8 +574,19 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
 
   Widget _tabbedLayout() {
     final palette = KarumPalette.of(context);
+    final openTrace = !_closedPanes.contains('trace');
+    final openBoard = !_closedPanes.contains('board');
+    final openCount = (openTrace ? 1 : 0) + 1 + (openBoard ? 1 : 0);
+    final reopenChips = <Widget>[];
+    if (!openTrace) {
+      reopenChips.add(_ReopenChip(label: 'Live trace', onReopen: _reopenTrace));
+    }
+    if (!openBoard) {
+      reopenChips.add(_ReopenChip(label: 'Door board', onReopen: _reopenBoard));
+    }
     return DefaultTabController(
-      length: 3,
+      key: ValueKey('tabs-$openTrace-$openBoard'),
+      length: openCount,
       child: Column(
         children: [
           Container(
@@ -558,37 +596,57 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
               unselectedLabelColor: palette.mute,
               indicatorColor: palette.brand,
               tabs: [
-                Tab(text: 'Trace (${_events.length})'),
+                if (openTrace) Tab(text: 'Trace (${_events.length})'),
                 const Tab(text: 'Map'),
-                Tab(
-                  text: _campaign == null
-                      ? 'Board'
-                      : 'Board (${_campaign!.doors.length})',
-                ),
+                if (openBoard)
+                  Tab(
+                    text: _campaign == null
+                        ? 'Board'
+                        : 'Board (${_campaign!.doors.length})',
+                  ),
               ],
             ),
           ),
+          if (reopenChips.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: KarumSpacing.xl,
+                vertical: KarumSpacing.xs,
+              ),
+              child: Wrap(
+                spacing: KarumSpacing.sm,
+                runSpacing: KarumSpacing.xs,
+                children: reopenChips,
+              ),
+            ),
           Expanded(
             child: TabBarView(
               children: [
-                TracePanel(
-                  events: _events,
-                  state: _job?.state ?? JobState.unknown,
-                  sseDropped: _sseDropped,
-                  polling: _polling,
-                  error: _pollFailures >= 4 ? _streamError : null,
-                ),
+                if (openTrace)
+                  TracePanel(
+                    events: _events,
+                    state: _job?.state ?? JobState.unknown,
+                    sseDropped: _sseDropped,
+                    polling: _polling,
+                    error: _pollFailures >= 4 ? _streamError : null,
+                    isClosed: false,
+                    onClose: () => setState(() => _closedPanes.add('trace')),
+                  ),
                 _campaign == null
                     ? const _ScoutPlaceholder()
                     : MapPanel(campaign: _campaign!, onOpenPitch: _openDoor),
-                _campaign == null
-                    ? const _BoardPlaceholder()
-                    : DoorBoard(
-                        campaign: _campaign!,
-                        onOpenPitch: _openDoor,
-                        onRegenerate: _regenerate,
-                        regeneratingDoorId: _regeneratingDoorId,
-                      ),
+                if (openBoard)
+                  _campaign == null
+                      ? const _BoardPlaceholder()
+                      : DoorBoard(
+                          campaign: _campaign!,
+                          onOpenPitch: _openDoor,
+                          onRegenerate: _regenerate,
+                          regeneratingDoorId: _regeneratingDoorId,
+                          isClosed: false,
+                          onClose: () =>
+                              setState(() => _closedPanes.add('board')),
+                        ),
               ],
             ),
           ),
@@ -724,6 +782,85 @@ class _BoardPlaceholder extends StatelessWidget {
       message:
           'The board fills once scoring, enrichment, and pitching finish. '
           'Doors stay in the gateway order.',
+    );
+  }
+}
+
+/// A slim vertical strip shown in place of a closed pane so the closure stays
+/// visible while occupying minimal space — the map expands into the freed width.
+class PaneStrip extends StatelessWidget {
+  const PaneStrip({super.key, required this.label, required this.onReopen});
+
+  final String label;
+  final VoidCallback onReopen;
+
+  static const double stripWidth = 56;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    return SizedBox(
+      width: stripWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          RotatedBox(
+            quarterTurns: 3,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: palette.mute, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: KarumSpacing.sm),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: palette.mute,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: KarumSpacing.md),
+          Semantics(
+            label: '$label — closed. Tap to reopen.',
+            button: true,
+            child: FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: NamedIconButton(
+                label: 'Reopen $label',
+                onPressed: onReopen,
+                icon: Icons.open_in_new_rounded,
+                iconSize: 16,
+                tooltip: 'Reopen $label',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact reopen chip shown above the narrow tabs when a pane is closed.
+class _ReopenChip extends StatelessWidget {
+  const _ReopenChip({required this.label, required this.onReopen});
+
+  final String label;
+  final VoidCallback onReopen;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusRing(
+      borderRadius: BorderRadius.circular(KarumRadius.control),
+      child: NamedIconButton(
+        label: 'Reopen $label',
+        onPressed: onReopen,
+        icon: Icons.open_in_new_rounded,
+        iconSize: 16,
+        tooltip: 'Reopen $label',
+      ),
     );
   }
 }

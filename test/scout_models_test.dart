@@ -345,25 +345,28 @@ void main() {
     expect(done.campaign?.doors, hasLength(2));
   });
 
-  test('the Qloo evidence a door carries parses, and its absence stays absent', () {
-    final doors = Campaign.fromJson(_campaignJson()).doors;
+  test(
+    'the Qloo evidence a door carries parses, and its absence stays absent',
+    () {
+      final doors = Campaign.fromJson(_campaignJson()).doors;
 
-    final first = doors.first;
-    expect(first.explainability.single.entityId, 'e-1');
-    expect(first.explainability.single.label, 'Ilegal Mezcal');
-    expect(first.explainability.single.score, 0.62);
-    expect(first.demographics!.ageBuckets.single.label, '25_34');
-    expect(first.demographics!.ageBuckets.single.delta, 0.12);
-    expect(first.demographics!.maleDelta, 0.03);
-    expect(first.demographics!.femaleDelta, -0.04);
-    expect(first.distanceMeters, 820);
+      final first = doors.first;
+      expect(first.explainability.single.entityId, 'e-1');
+      expect(first.explainability.single.label, 'Ilegal Mezcal');
+      expect(first.explainability.single.score, 0.62);
+      expect(first.demographics!.ageBuckets.single.label, '25_34');
+      expect(first.demographics!.ageBuckets.single.delta, 0.12);
+      expect(first.demographics!.maleDelta, 0.03);
+      expect(first.demographics!.femaleDelta, -0.04);
+      expect(first.distanceMeters, 820);
 
-    // A door the gateway carried no evidence for stays empty, never zeroed.
-    final second = doors[1];
-    expect(second.explainability, isEmpty);
-    expect(second.demographics, isNull);
-    expect(second.distanceMeters, 0);
-  });
+      // A door the gateway carried no evidence for stays empty, never zeroed.
+      final second = doors[1];
+      expect(second.explainability, isEmpty);
+      expect(second.demographics, isNull);
+      expect(second.distanceMeters, 0);
+    },
+  );
 
   test('unknown score terms stay explicitly unknown', () {
     final term = ScoreTerm.fromJson({'value': 0.4, 'source': 'qloo_fact'});

@@ -17,12 +17,16 @@ class DoorBoard extends StatefulWidget {
     this.onOpenPitch,
     this.onRegenerate,
     this.regeneratingDoorId,
+    this.isClosed = false,
+    this.onClose,
   });
 
   final Campaign campaign;
   final ValueChanged<Door>? onOpenPitch;
   final ValueChanged<Door>? onRegenerate;
   final String? regeneratingDoorId;
+  final bool isClosed;
+  final VoidCallback? onClose;
 
   @override
   State<DoorBoard> createState() => _DoorBoardState();
@@ -74,6 +78,18 @@ class _DoorBoardState extends State<DoorBoard> {
                                 ?.copyWith(color: palette.mute),
                           ),
                         ),
+                        if (widget.onClose != null)
+                          FocusRing(
+                            borderRadius: BorderRadius.circular(
+                              KarumRadius.control,
+                            ),
+                            child: NamedIconButton(
+                              label: 'Close Door board',
+                              onPressed: widget.onClose,
+                              icon: Icons.close_rounded,
+                              iconSize: 18,
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: KarumSpacing.xs),

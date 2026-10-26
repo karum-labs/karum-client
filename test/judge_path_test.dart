@@ -52,39 +52,40 @@ void main() {
     expect(find.text('Spring menu'), findsOneWidget);
   });
 
-  testWidgets('inspecting a previous run carries its stored point into free entry', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1440, 900);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'inspecting a previous run carries its stored point into free entry',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    final gateway = FakeGateway();
-    await tester.pumpWidget(KarumApp(client: gateway.client()));
-    await tester.pumpAndSettle();
+      final gateway = FakeGateway();
+      await tester.pumpWidget(KarumApp(client: gateway.client()));
+      await tester.pumpAndSettle();
 
-    // "Inspect this seed" is now an icon button in the card's top-right
-    // corner (PLAN.md §56); its accessible name is its tooltip, not a
-    // visible Text widget.
-    final inspect = find.byTooltip('Inspect this seed').first;
-    await tester.ensureVisible(inspect);
-    await tester.pumpAndSettle();
-    await tester.tap(inspect);
-    await tester.pumpAndSettle();
+      // "Inspect this seed" is now an icon button in the card's top-right
+      // corner (PLAN.md §56); its accessible name is its tooltip, not a
+      // visible Text widget.
+      final inspect = find.byTooltip('Inspect this seed').first;
+      await tester.ensureVisible(inspect);
+      await tester.pumpAndSettle();
+      await tester.tap(inspect);
+      await tester.pumpAndSettle();
 
-    final submit = find.text('Run this scout');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+      final submit = find.text('Run this scout');
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
 
-    expect(gateway.scoutPosts, hasLength(1));
-    final body =
-        jsonDecode(gateway.scoutPosts.single.body) as Map<String, dynamic>;
-    expect(body['free_entry'], isTrue);
-    expect(body['point'], {'lat': 30.2672, 'lng': -97.7431});
-    expect(body['seed_entities'], isNotEmpty);
-  });
+      expect(gateway.scoutPosts, hasLength(1));
+      final body =
+          jsonDecode(gateway.scoutPosts.single.body) as Map<String, dynamic>;
+      expect(body['free_entry'], isTrue);
+      expect(body['point'], {'lat': 30.2672, 'lng': -97.7431});
+      expect(body['seed_entities'], isNotEmpty);
+    },
+  );
 
   testWidgets('free entry refuses an empty city without calling the gateway', (
     tester,

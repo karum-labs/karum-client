@@ -269,9 +269,8 @@ class _ExplainabilityFacts extends StatelessWidget {
       return Text(
         'Qloo reported no per-input contribution for this door. That is a '
         'reported absence, not a zero contribution.',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: palette.mute),
       );
     }
     return Column(
@@ -279,9 +278,8 @@ class _ExplainabilityFacts extends StatelessWidget {
       children: [
         Text(
           'Each seed input and the weight Qloo gave it for this door.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: palette.mute),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.sm),
         for (final item in items)
@@ -292,16 +290,14 @@ class _ExplainabilityFacts extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item.label.isEmpty ? item.entityId : item.label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: palette.ink),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: palette.ink),
                   ),
                 ),
                 Text(
                   item.score.toStringAsFixed(3),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(color: palette.mute),
+                  style: Theme.of(context).textTheme.labelLarge
+                      ?.copyWith(color: palette.mute),
                 ),
               ],
             ),
@@ -328,9 +324,8 @@ class _DemographicFacts extends StatelessWidget {
       return Text(
         'No demographic profile came back for this door, so its demographic '
         'alignment is unknown.',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: palette.mute),
       );
     }
     return Column(
@@ -339,9 +334,8 @@ class _DemographicFacts extends StatelessWidget {
         if (demo.ageBuckets.isEmpty)
           Text(
             'The profile carries no age buckets.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: palette.mute),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: palette.mute),
           )
         else
           for (final bucket in demo.ageBuckets)
@@ -352,16 +346,14 @@ class _DemographicFacts extends StatelessWidget {
                   Expanded(
                     child: Text(
                       bucket.label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: palette.ink),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: palette.ink),
                     ),
                   ),
                   Text(
                     _signed(bucket.delta),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge?.copyWith(color: palette.mute),
+                    style: Theme.of(context).textTheme.labelLarge
+                        ?.copyWith(color: palette.mute),
                   ),
                 ],
               ),
@@ -369,9 +361,8 @@ class _DemographicFacts extends StatelessWidget {
         const SizedBox(height: KarumSpacing.xs),
         Text(
           'Male ${_signed(demo.maleDelta)} · female ${_signed(demo.femaleDelta)}',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: palette.mute),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: palette.mute),
         ),
         const SizedBox(height: KarumSpacing.xs),
         const SourceBadge(source: 'qloo_fact'),

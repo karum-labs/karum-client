@@ -300,10 +300,7 @@ void main() {
 
       // Run the Austin preset so the workspace shows the door board.
       final detail = find.text('Sola Yuzu Mezcal in Austin, TX');
-      final austinCard = find.ancestor(
-        of: detail,
-        matching: find.byType(Card),
-      );
+      final austinCard = find.ancestor(of: detail, matching: find.byType(Card));
       final preset = find.descendant(
         of: austinCard,
         matching: find.text('Run again'),
@@ -337,10 +334,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final detail = find.text('Sola Yuzu Mezcal in Austin, TX');
-      final austinCard = find.ancestor(
-        of: detail,
-        matching: find.byType(Card),
-      );
+      final austinCard = find.ancestor(of: detail, matching: find.byType(Card));
       final preset = find.descendant(
         of: austinCard,
         matching: find.text('Run again'),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
 import 'common.dart';
+import 'focus_ring.dart';
 import 'karum_chrome.dart';
 
 /// The live pipeline trace. Events arrive in server order and are appended,
@@ -16,6 +17,8 @@ class TracePanel extends StatefulWidget {
     this.sseDropped = false,
     this.polling = false,
     this.error,
+    this.isClosed = false,
+    this.onClose,
   });
 
   final List<TraceEvent> events;
@@ -23,6 +26,8 @@ class TracePanel extends StatefulWidget {
   final bool sseDropped;
   final bool polling;
   final String? error;
+  final bool isClosed;
+  final VoidCallback? onClose;
 
   @override
   State<TracePanel> createState() => _TracePanelState();
@@ -84,6 +89,18 @@ class _TracePanelState extends State<TracePanel> {
                   children: [
                     Expanded(child: SectionLabel('Live trace')),
                     JobStatePill(state: widget.state),
+                    if (widget.onClose != null)
+                      FocusRing(
+                        borderRadius: BorderRadius.circular(
+                          KarumRadius.control,
+                        ),
+                        child: NamedIconButton(
+                          label: 'Close live trace',
+                          onPressed: widget.onClose,
+                          icon: Icons.close_rounded,
+                          iconSize: 18,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: KarumSpacing.sm),
