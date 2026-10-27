@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../api/scout_models.dart';
+import '../theme/brand_tokens.dart';
 import 'google_maps_script.dart';
+import 'google_marker_icons.dart';
+import 'place_detail.dart';
 
 /// Google Maps canvas for one campaign.
 ///
@@ -38,7 +44,7 @@ class GoogleDoorMap extends StatefulWidget {
   final List<LocalityPolygon> localities;
   final List<ll.LatLng> routePoints;
   final String? selectedDoorId;
-  final ValueChanged<String> onSelectDoor;
+  final ValueChanged<String?>? onSelectDoor;
 
   @override
   State<GoogleDoorMap> createState() => _GoogleDoorMapState();
@@ -47,6 +53,12 @@ class GoogleDoorMap extends StatefulWidget {
 class _GoogleDoorMapState extends State<GoogleDoorMap> {
   var _ready = false;
   Object? _error;
+
+  KarumPalette? _palette;
+  GoogleMarkerIcons? _markerIcons;
+  Map<String, BitmapDescriptor> _icons = const {};
+  var _iconsReady = false;
+  var _iconGeneration = 0;
 
   @override
   void initState() {
@@ -58,6 +70,55 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
         .catchError((Object error) {
           if (mounted) setState(() => _error = error);
         });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final palette = KarumPalette.of(context);
+    if (identical(_palette, palette)) return;
+    _palette = palette;
+    _markerIcons = GoogleMarkerIcons(palette);
+    _icons = const {};
+    _iconsReady = false;
+    unawaited(_loadIcons());
+  }
+
+  @override
+  void didUpdateWidget(covariant GoogleDoorMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.doors != widget.doors ||
+        oldWidget.skips != widget.skips ||
+        oldWidget.selectedDoorId != widget.selectedDoorId) {
+      unawaited(_loadIcons());
+    }
+  }
+
+  Future<void> _loadIcons() async {
+    final generator = _markerIcons;
+    if (generator == null) return;
+    final generation = ++_iconGeneration;
+    final next = <String, BitmapDescriptor>{};
+    try {
+      if (widget.skips.isNotEmpty) {
+        next[GoogleMarkerIcons.skipKey] = await generator.skip();
+      }
+      for (final door in widget.doors) {
+        if (door.point == null) continue;
+        final selected = widget.selectedDoorId == door.id;
+        next[GoogleMarkerIcons.doorKey(door.rank, selected: selected)] =
+            await generator.door(door.rank, selected: selected);
+      }
+    } catch (_) {
+      if (!mounted || generation != _iconGeneration) return;
+      setState(() => _iconsReady = true);
+      return;
+    }
+    if (!mounted || generation != _iconGeneration) return;
+    setState(() {
+      _icons = next;
+      _iconsReady = true;
+    });
   }
 
   @override
@@ -73,7 +134,7 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
         ),
       );
     }
-    if (!_ready) {
+    if (!_ready || !_iconsReady) {
       return const Center(child: CircularProgressIndicator());
     }
     final maxAffinity = widget.cells.fold<double>(
@@ -140,31 +201,80 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
           ),
       },
       markers: {
-        for (final skip in widget.skips)
-          if (skip.point != null)
+        for (var i = 0; i < widget.skips.length; i++)
+          if (widget.skips[i].point != null)
             Marker(
-              markerId: MarkerId('skip-${skip.id}'),
-              position: LatLng(skip.point!.lat, skip.point!.lng),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueRed,
+              markerId: MarkerId('skip-$i-${widget.skips[i].id}'),
+              position: LatLng(
+                widget.skips[i].point!.lat,
+                widget.skips[i].point!.lng,
               ),
+              icon:
+                  _icons[GoogleMarkerIcons.skipKey] ??
+                  BitmapDescriptor.defaultMarker,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: 1,
               infoWindow: InfoWindow(
-                title: skip.name,
-                snippet: skip.reasonLabel,
+                title: widget.skips[i].name,
+                snippet: widget.skips[i].reasonLabel,
               ),
+              onTap: () async {
+                final ctx = context;
+                final skip = widget.skips[i];
+                final details = await fetchPlaceDetails(
+                  placeName: skip.name,
+                  lat: skip.point!.lat,
+                  lng: skip.point!.lng,
+                );
+                if (!mounted || !ctx.mounted) return;
+                if (details.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('No place details found')),
+                  );
+                  return;
+                }
+                showModalBottomSheet(
+                  context: ctx,
+                  isScrollControlled: true,
+                  builder: (_) => PlaceDetailBottomSheet(details: details),
+                );
+              },
             ),
         for (final door in widget.doors)
           if (door.point != null)
             Marker(
               markerId: MarkerId(door.id),
               position: LatLng(door.point!.lat, door.point!.lng),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                widget.selectedDoorId == door.id
-                    ? BitmapDescriptor.hueGreen
-                    : BitmapDescriptor.hueAzure,
-              ),
+              icon:
+                  _icons[GoogleMarkerIcons.doorKey(
+                    door.rank,
+                    selected: widget.selectedDoorId == door.id,
+                  )] ??
+                  BitmapDescriptor.defaultMarker,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: widget.selectedDoorId == door.id ? 3 : 2,
               infoWindow: InfoWindow(title: '${door.rank}. ${door.name}'),
-              onTap: () => widget.onSelectDoor(door.id),
+              onTap: () async {
+                final ctx = context;
+                widget.onSelectDoor?.call(door.id);
+                final details = await fetchPlaceDetails(
+                  placeName: door.name,
+                  lat: door.point!.lat,
+                  lng: door.point!.lng,
+                );
+                if (!mounted || !ctx.mounted) return;
+                if (details.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('No place details found')),
+                  );
+                  return;
+                }
+                showModalBottomSheet(
+                  context: ctx,
+                  isScrollControlled: true,
+                  builder: (_) => PlaceDetailBottomSheet(details: details),
+                );
+              },
             ),
       },
     );

@@ -33,4 +33,11 @@ abstract final class AppConfig {
   static const String googleMapsWebKey = String.fromEnvironment(
     'GOOGLE_MAPS_WEB_KEY',
   );
+
+  /// Key for the Google Places API (used for place details, photos, etc.).
+  ///
+  /// Empty means place details are not fetched.
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+  );
 }

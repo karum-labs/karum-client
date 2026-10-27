@@ -78,6 +78,8 @@ void main() {
     );
     expect(find.text('Qloo locality'), findsOneWidget);
     expect(find.text('Skipped door'), findsOneWidget);
+    expect(find.byKey(const Key('legend-door-pin')), findsOneWidget);
+    expect(find.byKey(const Key('legend-skip-pin')), findsOneWidget);
     expect(
       find.bySemanticsLabel(
         "Skipped door Maggie Mae's: Below the shortlist floor",
@@ -87,6 +89,57 @@ void main() {
     expect(
       find.bySemanticsLabel("Recommended door 1: Whisler's"),
       findsOneWidget,
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('unmapped skips are counted instead of silently dropped', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final campaign = Campaign(
+      jobId: 'run-map-no-point',
+      state: JobState.ready,
+      mode: ScoutMode.flagship,
+      city: 'Austin',
+      point: const GeoPoint(30.2672, -97.7431),
+      radiusMeters: 8000,
+      brand: const BrandContext(name: 'Sola'),
+      doors: const [],
+      skipList: const [
+        SkipItem(
+          id: 's-1',
+          name: 'Mapped Skip',
+          reason: 'low_affinity',
+          lat: 30.2676,
+          lng: -97.7387,
+        ),
+        SkipItem(id: 's-2', name: 'No Point Skip', reason: 'closed'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: MapPanel(campaign: campaign)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('1 without a point'), findsOneWidget);
+    expect(find.byKey(const Key('legend-skip-pin')), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        'Skipped door Mapped Skip: Below the shortlist floor',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Skipped door No Point Skip: Closed'),
+      findsNothing,
     );
     semantics.dispose();
   });

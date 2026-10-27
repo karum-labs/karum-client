@@ -101,6 +101,7 @@ void main() {
 
     expect(find.text('0.8160 below the returned floor 0.8386'), findsOneWidget);
     expect(find.text("Maggie Mae's"), findsOneWidget);
+    expect(find.text('No map point'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

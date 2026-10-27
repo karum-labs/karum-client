@@ -18,10 +18,18 @@ import 'common.dart';
 /// those are missing, the panel says so and falls back to the ordered list
 /// rather than inventing geometry.
 class MapPanel extends StatefulWidget {
-  const MapPanel({super.key, required this.campaign, this.onOpenPitch});
+  const MapPanel({
+    super.key,
+    required this.campaign,
+    this.onOpenPitch,
+    this.selectedDoorId,
+    this.onSelectDoor,
+  });
 
   final Campaign campaign;
   final ValueChanged<Door>? onOpenPitch;
+  final String? selectedDoorId;
+  final ValueChanged<String?>? onSelectDoor;
 
   @override
   State<MapPanel> createState() => _MapPanelState();
@@ -31,10 +39,9 @@ enum _MapView { map, list }
 
 class _MapPanelState extends State<MapPanel> {
   _MapView _view = _MapView.map;
-  String? _selectedDoorId;
 
   Door? get _selectedDoor {
-    final id = _selectedDoorId;
+    final id = widget.selectedDoorId;
     if (id == null) return null;
     for (final door in widget.campaign.doors) {
       if (door.id == id) return door;
@@ -101,6 +108,7 @@ class _MapPanelState extends State<MapPanel> {
     final campaign = widget.campaign;
     final route = campaign.route;
     final heatmap = campaign.heatmap;
+    final unmappedSkips = campaign.skipList.length - mappedSkips;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         KarumSpacing.xl,
@@ -171,7 +179,8 @@ class _MapPanelState extends State<MapPanel> {
                   icon: Icons.remove_circle_outline,
                   label:
                       'Skip list · ${campaign.skipList.length} doors'
-                      '${mappedSkips == 0 ? '' : ' · $mappedSkips mapped'}',
+                      '${mappedSkips == 0 ? '' : ' · $mappedSkips mapped'}'
+                      '${unmappedSkips == 0 ? '' : ' · $unmappedSkips without a point'}',
                   tone: palette.avoid,
                 ),
               if (heatmap != null && !heatmap.available)
@@ -343,8 +352,8 @@ class _MapPanelState extends State<MapPanel> {
                           for (final skip in skipsWithPoints)
                             Marker(
                               point: LatLng(skip.point!.lat, skip.point!.lng),
-                              width: 22,
-                              height: 22,
+                              width: 46,
+                              height: 46,
                               alignment: Alignment.center,
                               child: Semantics(
                                 container: true,
@@ -360,8 +369,10 @@ class _MapPanelState extends State<MapPanel> {
                           for (final door in doorsWithPoints)
                             Marker(
                               point: LatLng(door.point!.lat, door.point!.lng),
-                              width: _selectedDoorId == door.id ? 44 : 34,
-                              height: _selectedDoorId == door.id ? 44 : 34,
+                              width: widget.selectedDoorId == door.id ? 44 : 34,
+                              height: widget.selectedDoorId == door.id
+                                  ? 44
+                                  : 34,
                               alignment: Alignment.center,
                               child: Semantics(
                                 container: true,
@@ -369,20 +380,19 @@ class _MapPanelState extends State<MapPanel> {
                                 excludeSemantics: true,
                                 label:
                                     'Recommended door ${door.rank}: ${door.name}',
-                                onTap: () =>
-                                    setState(() => _selectedDoorId = door.id),
+                                onTap: () => widget.onSelectDoor?.call(door.id),
                                 child: Tooltip(
                                   message: '${door.rank}. ${door.name}',
                                   excludeFromSemantics: true,
                                   child: InkWell(
-                                    onTap: () => setState(
-                                      () => _selectedDoorId = door.id,
-                                    ),
+                                    onTap: () =>
+                                        widget.onSelectDoor?.call(door.id),
                                     customBorder: const CircleBorder(),
                                     excludeFromSemantics: true,
                                     child: _DoorPin(
                                       rank: door.rank,
-                                      selected: _selectedDoorId == door.id,
+                                      selected:
+                                          widget.selectedDoorId == door.id,
                                     ),
                                   ),
                                 ),
@@ -403,8 +413,8 @@ class _MapPanelState extends State<MapPanel> {
                     cells: cells,
                     localities: localities,
                     routePoints: routePoints,
-                    selectedDoorId: _selectedDoorId,
-                    onSelectDoor: (id) => setState(() => _selectedDoorId = id),
+                    selectedDoorId: widget.selectedDoorId,
+                    onSelectDoor: widget.onSelectDoor,
                   ),
           ),
         ),
@@ -428,7 +438,7 @@ class _MapPanelState extends State<MapPanel> {
               onOpen: widget.onOpenPitch == null
                   ? null
                   : () => widget.onOpenPitch!(_selectedDoor!),
-              onClose: () => setState(() => _selectedDoorId = null),
+              onClose: () => widget.onSelectDoor?.call(null),
             ),
           ),
         Positioned(
@@ -701,15 +711,24 @@ class _ViewToggle extends StatelessWidget {
 }
 
 class _DoorPin extends StatelessWidget {
-  const _DoorPin({required this.rank, required this.selected});
+  const _DoorPin({
+    required this.rank,
+    required this.selected,
+    this.size,
+    this.fontSize,
+  });
 
   final int rank;
   final bool selected;
+  final double? size;
+  final double? fontSize;
 
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     return Container(
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: selected ? palette.brand : palette.surface,
         shape: BoxShape.circle,
@@ -731,6 +750,7 @@ class _DoorPin extends StatelessWidget {
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: selected ? palette.onBrand : palette.brand,
           fontWeight: FontWeight.w800,
+          fontSize: fontSize,
         ),
       ),
     );
@@ -738,26 +758,23 @@ class _DoorPin extends StatelessWidget {
 }
 
 class _SkipPin extends StatelessWidget {
-  const _SkipPin();
+  const _SkipPin({this.size, this.iconSize});
+
+  final double? size;
+  final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     return Container(
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: palette.surface,
         shape: BoxShape.circle,
         border: Border.all(color: palette.avoid, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: palette.ink.withValues(alpha: 0.14),
-            blurRadius: 6,
-            offset: const Offset(0, 1),
-          ),
-        ],
       ),
       alignment: Alignment.center,
-      child: Icon(Icons.remove, size: 12, color: palette.avoid),
+      child: Icon(Icons.remove, size: iconSize ?? 18, color: palette.avoid),
     );
   }
 }
@@ -839,10 +856,30 @@ class _Legend extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _legendRow(palette.brand, 'Recommended door', palette),
+          _legendRow(
+            palette.brand,
+            'Recommended door',
+            palette,
+            symbol: const SizedBox(
+              key: Key('legend-door-pin'),
+              width: 16,
+              height: 16,
+              child: _DoorPin(rank: 1, selected: false, size: 16, fontSize: 9),
+            ),
+          ),
           if (hasSkips) ...[
             const SizedBox(height: 4),
-            _legendRow(palette.avoid, 'Skipped door', palette),
+            _legendRow(
+              palette.avoid,
+              'Skipped door',
+              palette,
+              symbol: const SizedBox(
+                key: Key('legend-skip-pin'),
+                width: 16,
+                height: 16,
+                child: _SkipPin(size: 16, iconSize: 9),
+              ),
+            ),
           ],
           if (hasLocalities) ...[
             const SizedBox(height: 4),
@@ -874,16 +911,25 @@ class _Legend extends StatelessWidget {
     String label,
     KarumPalette palette, {
     bool line = false,
+    Widget? symbol,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: line ? 14 : 8,
-          height: line ? 3 : 8,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(line ? 2 : 99),
+        SizedBox(
+          width: 16,
+          height: 16,
+          child: Center(
+            child:
+                symbol ??
+                Container(
+                  width: line ? 14 : 8,
+                  height: line ? 3 : 8,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(line ? 2 : 99),
+                  ),
+                ),
           ),
         ),
         const SizedBox(width: 6),

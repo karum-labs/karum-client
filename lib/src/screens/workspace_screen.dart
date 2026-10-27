@@ -53,6 +53,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   bool _canceling = false;
   bool _downloading = false;
   String? _regeneratingDoorId;
+  String? _selectedDoorId;
   final Set<String> _closedPanes = {};
   int _pollFailures = 0;
   bool _refreshing = false;
@@ -398,6 +399,10 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     Navigator.of(context).pushNamed('/scout/$id/doors/${door.id}');
   }
 
+  void _selectDoor(String? doorId) {
+    setState(() => _selectedDoorId = doorId);
+  }
+
   void _snack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -550,7 +555,12 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
         Expanded(
           child: _campaign == null
               ? const _ScoutPlaceholder()
-              : MapPanel(campaign: _campaign!, onOpenPitch: _openDoor),
+              : MapPanel(
+                  campaign: _campaign!,
+                  onOpenPitch: _openDoor,
+                  selectedDoorId: _selectedDoorId,
+                  onSelectDoor: _selectDoor,
+                ),
         ),
         VerticalDivider(width: 1, color: KarumPalette.of(context).line),
         SizedBox(
@@ -564,6 +574,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                   onOpenPitch: _openDoor,
                   onRegenerate: _regenerate,
                   regeneratingDoorId: _regeneratingDoorId,
+                  selectedDoorId: _selectedDoorId,
+                  onSelectDoor: _selectDoor,
                   isClosed: false,
                   onClose: () => setState(() => _closedPanes.add('board')),
                 ),
@@ -634,7 +646,12 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                   ),
                 _campaign == null
                     ? const _ScoutPlaceholder()
-                    : MapPanel(campaign: _campaign!, onOpenPitch: _openDoor),
+                    : MapPanel(
+                        campaign: _campaign!,
+                        onOpenPitch: _openDoor,
+                        selectedDoorId: _selectedDoorId,
+                        onSelectDoor: _selectDoor,
+                      ),
                 if (openBoard)
                   _campaign == null
                       ? const _BoardPlaceholder()
@@ -646,6 +663,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                           isClosed: false,
                           onClose: () =>
                               setState(() => _closedPanes.add('board')),
+                          selectedDoorId: _selectedDoorId,
+                          onSelectDoor: _selectDoor,
                         ),
               ],
             ),

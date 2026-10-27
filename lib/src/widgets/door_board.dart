@@ -19,6 +19,8 @@ class DoorBoard extends StatefulWidget {
     this.regeneratingDoorId,
     this.isClosed = false,
     this.onClose,
+    this.selectedDoorId,
+    this.onSelectDoor,
   });
 
   final Campaign campaign;
@@ -27,6 +29,8 @@ class DoorBoard extends StatefulWidget {
   final String? regeneratingDoorId;
   final bool isClosed;
   final VoidCallback? onClose;
+  final String? selectedDoorId;
+  final ValueChanged<String?>? onSelectDoor;
 
   @override
   State<DoorBoard> createState() => _DoorBoardState();
@@ -144,6 +148,8 @@ class _DoorBoardState extends State<DoorBoard> {
                       onOpenPitch: widget.onOpenPitch,
                       onRegenerate: widget.onRegenerate,
                       regeneratingDoorId: widget.regeneratingDoorId,
+                      selectedDoorId: widget.selectedDoorId,
+                      onSelectDoor: widget.onSelectDoor,
                     ),
                     _SkipTab(campaign: campaign),
                     _ExplainTab(campaign: campaign),
@@ -203,13 +209,15 @@ class _BaselineToggle extends StatelessWidget {
   }
 }
 
-class _RecommendedTab extends StatelessWidget {
+class _RecommendedTab extends StatefulWidget {
   const _RecommendedTab({
     required this.campaign,
     required this.showBaseline,
     required this.onOpenPitch,
     required this.onRegenerate,
     required this.regeneratingDoorId,
+    this.selectedDoorId,
+    this.onSelectDoor,
   });
 
   final Campaign campaign;
@@ -217,11 +225,47 @@ class _RecommendedTab extends StatelessWidget {
   final ValueChanged<Door>? onOpenPitch;
   final ValueChanged<Door>? onRegenerate;
   final String? regeneratingDoorId;
+  final String? selectedDoorId;
+  final ValueChanged<String?>? onSelectDoor;
+
+  @override
+  State<_RecommendedTab> createState() => _RecommendedTabState();
+}
+
+class _RecommendedTabState extends State<_RecommendedTab> {
+  final ScrollController _scroll = ScrollController();
+  final Map<String, GlobalKey> _doorKeys = {};
+  String? _lastSelectedId;
+
+  @override
+  void didUpdateWidget(_RecommendedTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = widget.selectedDoorId;
+    if (next == null || next == _lastSelectedId) return;
+    _lastSelectedId = next;
+    if (!widget.campaign.doors.any((d) => d.id == next)) return;
+    final context = _doorKeys[next]?.currentContext;
+    if (context == null || !mounted) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
+    final campaign = widget.campaign;
+    final showBaseline = widget.showBaseline;
     return ListView(
+      controller: _scroll,
       padding: const EdgeInsets.all(KarumSpacing.lg),
       children: [
         if (showBaseline) ...[
@@ -234,11 +278,16 @@ class _RecommendedTab extends StatelessWidget {
           for (var i = 0; i < campaign.doors.length; i++) ...[
             if (i > 0) const SizedBox(height: KarumSpacing.md),
             _DoorCard(
+              key: _doorKeys.putIfAbsent(
+                campaign.doors[i].id,
+                () => GlobalKey(),
+              ),
               door: campaign.doors[i],
               firstStop: i == 0,
-              onOpenPitch: onOpenPitch,
-              onRegenerate: onRegenerate,
-              regenerating: regeneratingDoorId == campaign.doors[i].id,
+              selected: campaign.doors[i].id == widget.selectedDoorId,
+              onOpenPitch: widget.onOpenPitch,
+              onRegenerate: widget.onRegenerate,
+              regenerating: widget.regeneratingDoorId == campaign.doors[i].id,
             ),
           ],
         if (campaign.warnings.isNotEmpty) ...[
@@ -273,11 +322,13 @@ class _RecommendedTab extends StatelessWidget {
 
 class _DoorCard extends StatelessWidget {
   const _DoorCard({
+    super.key,
     required this.door,
     required this.firstStop,
     required this.onOpenPitch,
     required this.onRegenerate,
     required this.regenerating,
+    this.selected = false,
   });
 
   final Door door;
@@ -285,6 +336,7 @@ class _DoorCard extends StatelessWidget {
   final ValueChanged<Door>? onOpenPitch;
   final ValueChanged<Door>? onRegenerate;
   final bool regenerating;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +367,7 @@ class _DoorCard extends StatelessWidget {
         : (place?.hours ?? '');
     final hoursFromQloo = enrichmentHours.isEmpty && hours.isNotEmpty;
     final phone = place?.phone ?? '';
-    return Card(
+    final card = Card(
       child: Padding(
         padding: const EdgeInsets.all(KarumSpacing.lg),
         child: Column(
@@ -681,6 +733,14 @@ class _DoorCard extends StatelessWidget {
         ),
       ),
     );
+    return selected
+        ? Container(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: palette.brand, width: 3)),
+            ),
+            child: card,
+          )
+        : card;
   }
 
   String _host(String url) {
@@ -870,6 +930,23 @@ class _SkipTab extends StatelessWidget {
                       '${skip.competitorCount} incumbents',
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: palette.mute),
+                    ),
+                  if (skip.point == null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_off_outlined,
+                          size: 12,
+                          color: palette.mute,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'No map point',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: palette.mute),
+                        ),
+                      ],
                     ),
                 ],
               ),
