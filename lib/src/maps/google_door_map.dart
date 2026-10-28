@@ -101,7 +101,8 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
     final next = <String, BitmapDescriptor>{};
     try {
       if (widget.skips.isNotEmpty) {
-        next[GoogleMarkerIcons.skipKey] = await generator.skip();
+        next[GoogleMarkerIcons.skipKey(selected: false)] = await generator
+            .skip();
       }
       for (final door in widget.doors) {
         if (door.point == null) continue;
@@ -210,7 +211,7 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
                 widget.skips[i].point!.lng,
               ),
               icon:
-                  _icons[GoogleMarkerIcons.skipKey] ??
+                  _icons[GoogleMarkerIcons.skipKey(selected: false)] ??
                   BitmapDescriptor.defaultMarker,
               anchor: const Offset(0.5, 0.5),
               zIndexInt: 1,
