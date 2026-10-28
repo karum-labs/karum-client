@@ -26,11 +26,14 @@ class GoogleDoorMap extends StatefulWidget {
     required this.brand,
     required this.doors,
     required this.skips,
+    required this.skipIds,
     required this.cells,
     required this.localities,
     required this.routePoints,
     required this.selectedDoorId,
     required this.onSelectDoor,
+    this.selectedSkipId,
+    this.onSelectSkip,
   });
 
   final String apiKey;
@@ -40,11 +43,17 @@ class GoogleDoorMap extends StatefulWidget {
   final Color brand;
   final List<Door> doors;
   final List<SkipItem> skips;
+
+  /// One selection id per entry of [skips], in the same order, named by the
+  /// board's `skipSelectionId` so a pin tap and a board row agree.
+  final List<String> skipIds;
   final List<HeatmapCell> cells;
   final List<LocalityPolygon> localities;
   final List<ll.LatLng> routePoints;
   final String? selectedDoorId;
   final ValueChanged<String?>? onSelectDoor;
+  final String? selectedSkipId;
+  final ValueChanged<String?>? onSelectSkip;
 
   @override
   State<GoogleDoorMap> createState() => _GoogleDoorMapState();
@@ -89,7 +98,8 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.doors != widget.doors ||
         oldWidget.skips != widget.skips ||
-        oldWidget.selectedDoorId != widget.selectedDoorId) {
+        oldWidget.selectedDoorId != widget.selectedDoorId ||
+        oldWidget.selectedSkipId != widget.selectedSkipId) {
       unawaited(_loadIcons());
     }
   }
@@ -211,16 +221,19 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
                 widget.skips[i].point!.lng,
               ),
               icon:
-                  _icons[GoogleMarkerIcons.skipKey(selected: false)] ??
+                  _icons[GoogleMarkerIcons.skipKey(
+                    selected: widget.skipIds[i] == widget.selectedSkipId,
+                  )] ??
                   BitmapDescriptor.defaultMarker,
               anchor: const Offset(0.5, 0.5),
-              zIndexInt: 1,
+              zIndexInt: widget.skipIds[i] == widget.selectedSkipId ? 3 : 1,
               infoWindow: InfoWindow(
                 title: widget.skips[i].name,
                 snippet: widget.skips[i].reasonLabel,
               ),
               onTap: () async {
                 final ctx = context;
+                widget.onSelectSkip?.call(widget.skipIds[i]);
                 final skip = widget.skips[i];
                 final details = await fetchPlaceDetails(
                   placeName: skip.name,
