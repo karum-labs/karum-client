@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -9,6 +10,7 @@ import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
 import 'google_maps_script.dart';
 import 'google_marker_icons.dart';
+import 'place_bubble.dart';
 import 'place_detail.dart';
 
 /// Google Maps canvas for one campaign.
@@ -34,6 +36,7 @@ class GoogleDoorMap extends StatefulWidget {
     required this.onSelectDoor,
     this.selectedSkipId,
     this.onSelectSkip,
+    this.onOpenPitch,
   });
 
   final String apiKey;
@@ -55,6 +58,9 @@ class GoogleDoorMap extends StatefulWidget {
   final String? selectedSkipId;
   final ValueChanged<String?>? onSelectSkip;
 
+  /// Opens a recommended door's pitch and route; the bubble's action.
+  final ValueChanged<Door>? onOpenPitch;
+
   @override
   State<GoogleDoorMap> createState() => _GoogleDoorMapState();
 }
@@ -69,9 +75,20 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
   var _iconsReady = false;
   var _iconGeneration = 0;
 
+  GoogleMapController? _controller;
+
+  /// The selected pin's position in the map's own coordinates, or null while
+  /// it is not known (or when nothing is selected).
+  Offset? _anchor;
+  var _anchorGeneration = 0;
+  Size? _lastMapSize;
+  String? _targetKey;
+  Future<PlaceDetails?>? _details;
+
   @override
   void initState() {
     super.initState();
+    _syncTarget();
     ensureGoogleMapsLoaded(widget.apiKey)
         .then((_) {
           if (mounted) setState(() => _ready = true);
@@ -102,6 +119,102 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
         oldWidget.selectedSkipId != widget.selectedSkipId) {
       unawaited(_loadIcons());
     }
+    if (oldWidget.selectedDoorId != widget.selectedDoorId ||
+        oldWidget.selectedSkipId != widget.selectedSkipId ||
+        oldWidget.doors != widget.doors ||
+        oldWidget.skips != widget.skips) {
+      _syncTarget();
+    }
+  }
+
+  /// The pin the bubble belongs to, or null when none is selected (or the
+  /// selected one has no map point).
+  _BubbleTarget? get _target {
+    final doorId = widget.selectedDoorId;
+    if (doorId != null) {
+      for (final door in widget.doors) {
+        if (door.id != doorId || door.point == null) continue;
+        final onOpenPitch = widget.onOpenPitch;
+        return _BubbleTarget(
+          key: 'door:${door.id}',
+          name: door.name,
+          lat: door.point!.lat,
+          lng: door.point!.lng,
+          facts: PlaceBubbleFacts.door(
+            title: door.name,
+            rank: door.rank,
+            score: door.compositePercent,
+            scoreSource: door.scores.composite?.source ?? 'model_inference',
+            sharedTags: [
+              for (final tag in door.sharedTags)
+                if (tag.label.isNotEmpty) tag.label,
+            ],
+            onOpenPitch: onOpenPitch == null ? null : () => onOpenPitch(door),
+          ),
+        );
+      }
+    }
+    final skipId = widget.selectedSkipId;
+    if (skipId != null) {
+      for (var i = 0; i < widget.skips.length; i++) {
+        final skip = widget.skips[i];
+        if (widget.skipIds[i] != skipId || skip.point == null) continue;
+        return _BubbleTarget(
+          key: 'skip:$skipId',
+          name: skip.name,
+          lat: skip.point!.lat,
+          lng: skip.point!.lng,
+          facts: PlaceBubbleFacts.skipped(
+            title: skip.name,
+            reason: skip.reasonLabel,
+            reasonDetail: skip.reasonDetail,
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Starts the Places lookup when the selected pin changes. The lookup is
+  /// cached for the session, so tapping a pin again shows it at once.
+  void _syncTarget() {
+    final target = _target;
+    if (target?.key == _targetKey) return;
+    _targetKey = target?.key;
+    _anchor = null;
+    _details = target == null
+        ? null
+        : PlaceDetailsRepository.shared.load(
+            name: target.name,
+            lat: target.lat,
+            lng: target.lng,
+          );
+    unawaited(_updateAnchor());
+  }
+
+  /// Re-reads where the selected pin is on screen. The map owns the camera,
+  /// so the position has to be asked for after every move.
+  Future<void> _updateAnchor() async {
+    final controller = _controller;
+    final target = _target;
+    final generation = ++_anchorGeneration;
+    if (controller == null || target == null) return;
+    try {
+      final point = await controller.getScreenCoordinate(
+        LatLng(target.lat, target.lng),
+      );
+      // A newer request, or a different pin, has superseded this answer.
+      if (!mounted || generation != _anchorGeneration) return;
+      // Mobile reports physical pixels; the web plugin reports CSS pixels.
+      final scale = kIsWeb ? 1.0 : MediaQuery.devicePixelRatioOf(context);
+      setState(() => _anchor = Offset(point.x / scale, point.y / scale));
+    } catch (_) {
+      // The controller can be disposed mid-call; the next move retries.
+    }
+  }
+
+  void _closeBubble() {
+    widget.onSelectDoor?.call(null);
   }
 
   Future<void> _loadIcons() async {
@@ -152,7 +265,21 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
       0.01,
       (max, cell) => cell.affinity > max ? cell.affinity : max,
     );
-    return GoogleMap(
+    final map = GoogleMap(
+      onMapCreated: (controller) {
+        _controller = controller;
+        unawaited(_updateAnchor());
+      },
+      onCameraMove: (_) {
+        if (_targetKey != null) unawaited(_updateAnchor());
+      },
+      onCameraIdle: () {
+        if (_targetKey != null) unawaited(_updateAnchor());
+      },
+      // A tap on the bare map dismisses the bubble.
+      onTap: (_) {
+        if (_targetKey != null) _closeBubble();
+      },
       initialCameraPosition: CameraPosition(
         target: LatLng(widget.center.lat, widget.center.lng),
         zoom: widget.zoom,
@@ -227,32 +354,9 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
                   BitmapDescriptor.defaultMarker,
               anchor: const Offset(0.5, 0.5),
               zIndexInt: widget.skipIds[i] == widget.selectedSkipId ? 3 : 1,
-              infoWindow: InfoWindow(
-                title: widget.skips[i].name,
-                snippet: widget.skips[i].reasonLabel,
-              ),
-              onTap: () async {
-                final ctx = context;
-                widget.onSelectSkip?.call(widget.skipIds[i]);
-                final skip = widget.skips[i];
-                final details = await fetchPlaceDetails(
-                  placeName: skip.name,
-                  lat: skip.point!.lat,
-                  lng: skip.point!.lng,
-                );
-                if (!mounted || !ctx.mounted) return;
-                if (details.isEmpty) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('No place details found')),
-                  );
-                  return;
-                }
-                showModalBottomSheet(
-                  context: ctx,
-                  isScrollControlled: true,
-                  builder: (_) => PlaceDetailBottomSheet(details: details),
-                );
-              },
+              // The details bubble replaces Google's own info window, which
+              // can only show a title and a snippet; a tap just selects.
+              onTap: () => widget.onSelectSkip?.call(widget.skipIds[i]),
             ),
         for (final door in widget.doors)
           if (door.point != null)
@@ -267,30 +371,56 @@ class _GoogleDoorMapState extends State<GoogleDoorMap> {
                   BitmapDescriptor.defaultMarker,
               anchor: const Offset(0.5, 0.5),
               zIndexInt: widget.selectedDoorId == door.id ? 3 : 2,
-              infoWindow: InfoWindow(title: '${door.rank}. ${door.name}'),
-              onTap: () async {
-                final ctx = context;
-                widget.onSelectDoor?.call(door.id);
-                final details = await fetchPlaceDetails(
-                  placeName: door.name,
-                  lat: door.point!.lat,
-                  lng: door.point!.lng,
-                );
-                if (!mounted || !ctx.mounted) return;
-                if (details.isEmpty) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('No place details found')),
-                  );
-                  return;
-                }
-                showModalBottomSheet(
-                  context: ctx,
-                  isScrollControlled: true,
-                  builder: (_) => PlaceDetailBottomSheet(details: details),
-                );
-              },
+              onTap: () => widget.onSelectDoor?.call(door.id),
             ),
       },
     );
+    final target = _target;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Resizing the window moves the pin on screen without moving the
+        // camera, so no camera event fires; ask for its position again.
+        if (_lastMapSize != constraints.biggest) {
+          _lastMapSize = constraints.biggest;
+          if (_targetKey != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) unawaited(_updateAnchor());
+            });
+          }
+        }
+        return Stack(
+          children: [
+            Positioned.fill(child: map),
+            if (target != null && _details != null)
+              Positioned.fill(
+                child: PlaceBubbleLayer(
+                  anchor: _anchor,
+                  mapSize: constraints.biggest,
+                  facts: target.facts,
+                  details: _details!,
+                  onClose: _closeBubble,
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
+}
+
+/// The selected pin, with what the bubble needs to look it up and describe it.
+class _BubbleTarget {
+  const _BubbleTarget({
+    required this.key,
+    required this.name,
+    required this.lat,
+    required this.lng,
+    required this.facts,
+  });
+
+  final String key;
+  final String name;
+  final double lat;
+  final double lng;
+  final PlaceBubbleFacts facts;
 }

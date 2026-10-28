@@ -447,6 +447,7 @@ class _MapPanelState extends State<MapPanel> {
                     skipIds: [for (final skip in skipsWithPoints) skipIds[skip]!],
                     selectedSkipId: widget.selectedSkipId,
                     onSelectSkip: widget.onSelectSkip,
+                    onOpenPitch: widget.onOpenPitch,
                     cells: cells,
                     localities: localities,
                     routePoints: routePoints,
@@ -465,7 +466,11 @@ class _MapPanelState extends State<MapPanel> {
             hasSkips: skipsWithPoints.isNotEmpty,
           ),
         ),
-        if (_selectedDoor != null)
+        // On the Google canvas the pin's own bubble carries the door's
+        // details and the "Open pitch & route" action, so this card would be
+        // a second surface for the same tap (PLAN.md §63). The fallback
+        // canvas has no bubble, so it keeps the card.
+        if (_selectedDoor != null && AppConfig.googleMapsWebKey.isEmpty)
           Positioned(
             left: KarumSpacing.md,
             right: KarumSpacing.md,
