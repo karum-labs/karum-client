@@ -29,6 +29,8 @@ flutter run -d chrome --dart-define=GATEWAY_URL=http://127.0.0.1:8080
 
 If `GATEWAY_URL` is omitted, the app defaults to `http://localhost:8080`.
 
+Share links point at the running web app, not at the gateway's JSON API. Web builds use the browser origin and the hash route automatically; a desktop build has no browser origin, so set `--dart-define=PUBLIC_APP_URL=https://karum-512016.web.app` to produce a shareable link.
+
 The login screen's hackathon banner follows `SHOW_JUDGES_BANNER`. It is on in debug and profile, and off in a release build, unless you pass `--dart-define=SHOW_JUDGES_BANNER=true` or `false`. The banner's **Open demo** button needs the gateway running with `HACKATHON_MODE=true`.
 
 **Previewing `build/web` without the stack:** the landing screen fetches `GET /health` on load, so served from a plain static file server there is no gateway behind it and `/health` answers 404 — the screen shows its gateway-unavailable state, which is expected rather than a bug. To preview the happy path, run `make local` in `karum-infra`, or serve `build/web` from something that answers `/health` with the mode you want to see.

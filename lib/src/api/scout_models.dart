@@ -174,6 +174,7 @@ class ScoreTerm {
     this.raw,
     this.source = 'model_inference',
     this.inputs = const [],
+    this.partial = false,
   });
 
   /// The normalized 0-1 value.
@@ -190,6 +191,11 @@ class ScoreTerm {
 
   /// Query or explainability inputs recorded beside the score.
   final List<String> inputs;
+
+  /// True when a composite renormalized over the known terms because at
+  /// least one sub-score was unknown. The number is still the best available
+  /// estimate, but it is not a complete three-term score.
+  final bool partial;
 
   /// The percentage shown on a score bar.
   double? get percent {
@@ -218,6 +224,7 @@ class ScoreTerm {
     raw: _double(json['raw']),
     source: _string(json['source'], fallback: 'model_inference'),
     inputs: _stringList(json['inputs']),
+    partial: _bool(json['partial'], fallback: false),
   );
 }
 
@@ -1026,6 +1033,59 @@ class Campaign {
       errorMessage: _string(json['error_message']),
     );
   }
+}
+
+/// One campaign header owned by an account, returned by
+/// `GET /api/v1/account/campaigns`. It is enough to restore a run or re-run a
+/// preset; the full payload comes back from `GET /campaigns/:id`.
+class AccountCampaign {
+  const AccountCampaign({
+    required this.id,
+    required this.mode,
+    required this.city,
+    required this.brandName,
+    this.presetId = '',
+    this.radiusMeters = 0,
+    this.point,
+    required this.createdAt,
+    this.hasRun = false,
+  });
+
+  final String id;
+  final String presetId;
+  final ScoutMode mode;
+  final String city;
+  final String brandName;
+  final int radiusMeters;
+  final GeoPoint? point;
+  final DateTime createdAt;
+  final bool hasRun;
+
+  factory AccountCampaign.fromJson(Map<String, dynamic> json) {
+    final rawCreated = json['created_at'];
+    final createdAt = rawCreated is String
+        ? DateTime.tryParse(rawCreated) ?? DateTime.now()
+        : DateTime.now();
+    return AccountCampaign(
+      id: _string(json['id']),
+      presetId: _string(json['preset_id']),
+      mode: ScoutMode.parse(_string(json['mode'])),
+      city: _string(json['city']),
+      brandName: _string(json['brand_name']),
+      radiusMeters: _int(json['radius_meters']),
+      point: json['point'] is Map
+          ? GeoPoint.fromJson(_map(json['point']))
+          : null,
+      createdAt: createdAt,
+      hasRun: _bool(json['has_run'], fallback: false),
+    );
+  }
+
+  /// A readable label: brand in city.
+  String get label => '$brandName · $city';
+
+  /// The mode shown on a pill.
+  String get modeLabel => mode.shortLabel;
 }
 
 /// A job response, with the campaign when the job is terminal.

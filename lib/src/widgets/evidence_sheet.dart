@@ -229,7 +229,11 @@ class _DoorScoreFacts extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      row.$2?.displayText ?? 'Unknown',
+                      row.$2 == null
+                          ? 'Unknown'
+                          : row.$2!.partial
+                          ? '${row.$2!.displayText} (partial)'
+                          : row.$2!.displayText,
                       style: Theme.of(context).textTheme.labelLarge
                           ?.copyWith(color: palette.mute),
                     ),

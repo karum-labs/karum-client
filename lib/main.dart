@@ -10,6 +10,7 @@ import 'src/config/app_flags.dart';
 import 'src/data/presets.dart';
 import 'src/screens/account_screen.dart';
 import 'src/screens/door_pitch_screen.dart';
+import 'src/screens/history_screen.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/judge_entry_screen.dart';
 import 'src/screens/landing_screen.dart';
@@ -249,6 +250,14 @@ class _KarumAppState extends State<KarumApp> {
     }
     if (segments.length == 1 && segments[0] == 'account') {
       return _page(const AccountScreen(), settings.name ?? '/account');
+    }
+    if (segments.length == 2 &&
+        segments[0] == 'account' &&
+        segments[1] == 'history') {
+      return _page(
+        const CampaignHistoryScreen(),
+        settings.name ?? '/account/history',
+      );
     }
 
     // /scout/:jobId/doors/:doorId

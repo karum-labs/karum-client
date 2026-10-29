@@ -37,10 +37,7 @@ Future<String> fetchPhotoUrl({
 }) async {
   final base = AppConfig.gatewayBaseUrl;
   final uri = Uri.parse('$base/api/v1/places/photo').replace(
-    queryParameters: {
-      'maxwidth': maxWidth.toString(),
-      'photo_name': photoRef,
-    },
+    queryParameters: {'maxwidth': maxWidth.toString(), 'photo_name': photoRef},
   );
   final resp = await http.get(uri);
   if (resp.statusCode == 200) {
@@ -61,14 +58,11 @@ class PlaceDetailBottomSheet extends StatelessWidget {
     final palette = KarumPalette.of(context);
     final rating = details['rating']?.toDouble() ?? 0.0;
     final List<dynamic> reviews = details['reviews'] ?? [];
-    final List<String> reviewExcerpts = reviews
-        .take(3)
-        .map((r) {
-          final text = r['text'];
-          if (text is! String || text.isEmpty) return '';
-          return text.substring(0, text.length < 60 ? text.length : 60);
-        })
-        .toList();
+    final List<String> reviewExcerpts = reviews.take(3).map((r) {
+      final text = r['text'];
+      if (text is! String || text.isEmpty) return '';
+      return text.substring(0, text.length < 60 ? text.length : 60);
+    }).toList();
 
     Widget? photoWidget;
     if (details['photos']?.isNotEmpty == true) {
@@ -87,7 +81,8 @@ class PlaceDetailBottomSheet extends StatelessWidget {
             width: 200,
             height: 150,
             fit: BoxFit.cover,
-            errorBuilder: (ctx, err, stack) => const Icon(Icons.image, size: 64),
+            errorBuilder: (ctx, err, stack) =>
+                const Icon(Icons.image, size: 64),
           );
         },
       );
@@ -124,19 +119,23 @@ class PlaceDetailBottomSheet extends StatelessWidget {
               children: [
                 Icon(Icons.star, color: palette.brand, size: 16),
                 const SizedBox(width: 4),
-                Text(rating.toStringAsFixed(1),
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  rating.toStringAsFixed(1),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
             const SizedBox(height: KarumSpacing.sm),
-            ...reviewExcerpts.map((txt) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                txt,
-                style:
-                    Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.mute),
+            ...reviewExcerpts.map(
+              (txt) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  txt,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.mute),
+                ),
               ),
-            ))
+            ),
           ],
         ),
       ),

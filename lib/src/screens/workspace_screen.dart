@@ -7,6 +7,7 @@ import '../api/scout_models.dart';
 import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import '../util/file_saver.dart';
+import '../util/share.dart';
 import '../widgets/async_states.dart';
 import '../widgets/coach_overlay.dart';
 import '../widgets/common.dart';
@@ -360,6 +361,38 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     }
   }
 
+  Future<void> _share() async {
+    final campaign = _campaign;
+    final id = _effectiveJobId;
+    if (campaign == null || id == null) return;
+    final route = campaign.campaignId.isNotEmpty
+        ? '/campaigns/${campaign.campaignId}'
+        : '/scout/$id';
+    final url = appUrl(route);
+    try {
+      final ok = await shareUrl(
+        url: url,
+        title: 'Karum run: ${campaign.brand.name} · ${campaign.city}',
+        text:
+            'View the ${campaign.mode.shortLabel} run for '
+            '${campaign.brand.name} in ${campaign.city}.',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok ? 'Run link copied.' : 'Could not share the run link.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share the run link.')),
+      );
+    }
+  }
+
   Future<void> _regenerate(Door door) async {
     final id = _effectiveJobId;
     if (id == null || _regeneratingDoorId != null) return;
@@ -444,6 +477,15 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                 icon: Icons.picture_as_pdf_outlined,
                 iconSize: 20,
                 busy: _downloading,
+              ),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: 'Share this run',
+                  onPressed: campaign == null || _downloading ? null : _share,
+                  icon: Icons.share_outlined,
+                  iconSize: 20,
+                ),
               ),
             ],
           ),

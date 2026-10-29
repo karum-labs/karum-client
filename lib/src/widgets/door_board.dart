@@ -451,7 +451,10 @@ class _DoorCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(color: palette.ink, fontSize: 30),
                       ),
-                      const SourceBadge(source: 'model_inference'),
+                      SourceBadge(
+                        source:
+                            door.scores.composite?.source ?? 'model_inference',
+                      ),
                     ],
                   ),
                 ),
@@ -475,6 +478,18 @@ class _DoorCard extends StatelessWidget {
                   const TagPill(label: 'Closed per Qloo'),
                 if (menu != null && menu.shelfUnknown)
                   TagPill(label: 'Shelf unverified', selected: false),
+                if (door.scores.composite?.partial == true)
+                  const TagPill(label: 'Partial composite'),
+                if (door.distanceMeters > 0)
+                  TagPill(
+                    label:
+                        '${(door.distanceMeters / 1000).toStringAsFixed(1)} km away',
+                  ),
+                if (door.demographics != null)
+                  TagPill(
+                    label:
+                        'Demo ${door.demographics!.maleDelta.toStringAsFixed(0)}% M / ${door.demographics!.femaleDelta.toStringAsFixed(0)}% F',
+                  ),
               ],
             ),
             if (website.isNotEmpty || hours.isNotEmpty || phone.isNotEmpty) ...[
@@ -979,6 +994,17 @@ class _ExplainTab extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: palette.mute),
         ),
+        if (campaign.doors.any(
+          (door) => door.scores.composite?.partial == true,
+        )) ...[
+          const SizedBox(height: KarumSpacing.xs),
+          Text(
+            'A partial composite renormalizes over the terms that are known. '
+            'The missing term is shown as Unknown, never scored as zero.',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.mute),
+          ),
+        ],
         const SizedBox(height: KarumSpacing.lg),
         const SectionLabel('Sources'),
         const SizedBox(height: KarumSpacing.sm),

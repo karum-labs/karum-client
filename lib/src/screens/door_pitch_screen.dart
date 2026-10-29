@@ -7,6 +7,7 @@ import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import '../util/file_saver.dart';
 import '../util/links.dart';
+import '../util/share.dart';
 import '../widgets/async_states.dart';
 import '../widgets/common.dart';
 import '../widgets/evidence_sheet.dart';
@@ -150,6 +151,36 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
     }
   }
 
+  Future<void> _share() async {
+    final campaign = _campaign;
+    final door = _door;
+    final jobId = widget.jobId;
+    if (campaign == null || door == null) return;
+    final url = appUrl('/scout/$jobId/doors/${door.id}');
+    try {
+      final ok = await shareUrl(
+        url: url,
+        title: 'Karum door: ${door.name}',
+        text:
+            'Door ${door.rank} — ${door.name} in ${campaign.city} '
+            '(${campaign.mode.shortLabel}).',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok ? 'Door link copied.' : 'Could not share the door link.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share the door link.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final campaign = _campaign;
@@ -174,6 +205,15 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
                   icon: Icons.picture_as_pdf_outlined,
                   iconSize: 20,
                   busy: _downloading,
+                ),
+              ),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: 'Share this door',
+                  onPressed: campaign == null || _downloading ? null : _share,
+                  icon: Icons.share_outlined,
+                  iconSize: 20,
                 ),
               ),
             ],

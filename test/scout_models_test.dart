@@ -238,7 +238,20 @@ void main() {
     expect(door.scores.culturalAffinity?.percent, 91);
     expect(door.scores.culturalAffinity?.inputs, ['rank=1', 'shortlist=25']);
     expect(door.scores.composite?.source, 'model_inference');
+    expect(door.scores.composite?.partial, isFalse);
     expect(door.scores.demographicAlignment, isNull);
+  });
+
+  test('a renormalized composite carries its partial flag', () {
+    final term = ScoreTerm.fromJson({
+      'value': 1,
+      'display': 100,
+      'source': 'model_inference',
+      'partial': true,
+    });
+
+    expect(term.partial, isTrue);
+    expect(term.displayText, '100');
   });
 
   test('door coordinates prefer Places, then the recorded Qloo point', () {

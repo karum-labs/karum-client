@@ -50,4 +50,35 @@ void main() {
     expect(find.text('Tue 17:00-00:00'), findsOneWidget);
     expect(find.text('Qloo fact'), findsWidgets);
   });
+
+  testWidgets('a renormalized composite is labelled partial', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const campaign = Campaign(
+      jobId: 'run-partial',
+      state: JobState.ready,
+      mode: ScoutMode.wholesale,
+      city: 'Austin',
+      brand: BrandContext(name: 'Sola'),
+      doors: [
+        Door(
+          id: 'd-1',
+          name: 'Tobalá',
+          rank: 1,
+          scores: ScoreSet(composite: ScoreTerm(display: 100, partial: true)),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: DoorBoard(campaign: campaign)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Partial composite'), findsOneWidget);
+  });
 }

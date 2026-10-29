@@ -113,6 +113,31 @@ class GatewayClient {
     return _parse(response, PresetCatalog.fromJson);
   }
 
+  /// Fetches `GET /api/v1/account/campaigns`, the signed-in account's
+  /// run-history list. Bearer token is attached automatically.
+  ///
+  /// The route requires a session: anonymous visitors get 401 and never see
+  /// another account's campaigns (PLAN.md §49).
+  Future<List<AccountCampaign>> fetchAccountCampaigns() async {
+    final response = await _get(
+      '/api/v1/account/campaigns',
+      timeout: const Duration(seconds: 15),
+    );
+    final decoded = _decodeObject(response);
+    final raw = decoded['campaigns'];
+    if (raw is! List) {
+      return const <AccountCampaign>[];
+    }
+    return raw
+        .whereType<Map>()
+        .map(
+          (item) => AccountCampaign.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
+        .toList(growable: false);
+  }
+
   /// Signs in with an email and password and stores the returned token.
   Future<AuthSession> login({
     required String email,
