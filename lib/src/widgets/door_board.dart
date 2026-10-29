@@ -456,7 +456,8 @@ class _DoorCard extends StatelessWidget {
         ? enrichmentHours
         : (place?.hours ?? '');
     final hoursFromQloo = enrichmentHours.isEmpty && hours.isNotEmpty;
-    final phone = place?.phone ?? '';
+    final phone = enrichment?.phone.isNotEmpty == true ? enrichment!.phone : (place?.phone ?? '');
+    final phoneFromQloo = enrichment?.phone.isEmpty == true && place?.phone.isNotEmpty == true;
     final card = Card(
       child: Padding(
         padding: const EdgeInsets.all(KarumSpacing.lg),
@@ -620,7 +621,7 @@ class _DoorCard extends StatelessWidget {
                       Expanded(
                         child: FactRow(icon: Icons.phone_rounded, text: phone),
                       ),
-                      const SourceBadge(source: 'qloo_fact'),
+                      if (phoneFromQloo) const SourceBadge(source: 'google_fact')
                     ],
                   ),
                 ),

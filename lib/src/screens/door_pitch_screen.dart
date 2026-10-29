@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:html' as html;
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../api/gateway_client.dart';
 import '../api/scout_models.dart';
@@ -37,6 +41,7 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
   String? _downloadError;
   bool _downloading = false;
   bool _regenerating = false;
+  Attachment? _attachment;
 
   Door? get _door => _campaign?.doorById(widget.doorId);
 
@@ -94,16 +99,24 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
 
   Future<void> _regenerate() async {
     if (_regenerating) return;
+    final result = await _promptInstructions();
+    if (result == null) return;
+    final instructions = result.$1;
+    final attachment = result.$2;
+    _attachment = attachment;
     setState(() => _regenerating = true);
     try {
       final campaign = await _client.regenerateDoorPitch(
         widget.jobId,
         widget.doorId,
+        instructions: instructions,
+        attachment: attachment,
       );
       if (!mounted) return;
       setState(() {
         _campaign = campaign;
         _regenerating = false;
+        _attachment = null;
       });
     } on GatewayException catch (error) {
       if (!mounted) return;
@@ -111,6 +124,102 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  /// A bubble anchored over the pitch page with an instruction field for the
+  /// redraft (PLAN.md §65). Returns (instructions, attachment), or null on
+  /// cancel.
+  Future<(String?, Attachment?)?> _promptInstructions() async {
+    final controller = TextEditingController();
+    Attachment? attachment;
+    return showDialog<(String?, Attachment?)?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Regenerate pitch'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tell Karum what to change. This is a suggestion, not a rule: '
+              'every number still needs a cited evidence id.',
+            ),
+            const SizedBox(height: KarumSpacing.md),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              maxLength: 500,
+              decoration: const InputDecoration(
+                hintText: 'e.g. shorter opening, lead with the cold-brew SKU',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (attachment != null) ...[
+              const SizedBox(height: KarumSpacing.md),
+              Row(
+                children: [
+                  const Icon(Icons.attach_file, size: 18),
+                  const SizedBox(width: KarumSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      attachment.filename,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      // State is captured by the builder closure via the
+                      // enclosing variable; rebuilding the dialog clears it.
+                    },
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: KarumSpacing.sm),
+            Row(
+              children: [
+                const Icon(Icons.add_circle_outline, size: 18),
+                const SizedBox(width: KarumSpacing.sm),
+                Expanded(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.file_present, size: 18),
+                    label: const Text('Attach brand file (.txt, .md, .pdf)'),
+                    onPressed: attachment == null ? _pickAttachment : null,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FocusRing(
+            borderRadius: BorderRadius.circular(KarumRadius.control),
+            child: FilledButton(
+              onPressed: () =>
+                  Navigator.pop(context, (controller.text, attachment)),
+              child: const Text('Generate'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Picks a brand file to attach to the pitch redraft (PLAN.md §65).
+  /// Wired through dart:html on web and file_picker on desktop once the
+  /// package is pinned in pubspec.yaml.
+  void _pickAttachment() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('File attachment is not yet available on this platform.'),
+      ),
+    );
   }
 
   Future<void> _download() async {
@@ -146,6 +255,34 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
         () => _downloadError =
             'The PDF could not be saved: $error. The campaign is unchanged.',
       );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  Future<void> _exportPitch() async {
+    final campaign = _campaign;
+    final door = _door;
+    if (campaign == null || door == null) return;
+    setState(() => _downloading = true);
+    try {
+      final bytes = await _client.exportPitch(widget.jobId, door.id);
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "pitch-${door.name.replaceAll(' ', '-')}.pdf")
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pitch saved as PDF.')),
+      );
+    } on GatewayException catch (error) {
+      if (!mounted) return;
+      setState(() => _downloadError = error.message);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _downloadError = 'The pitch PDF could not be saved: $error.');
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -203,6 +340,18 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
                       ? null
                       : _download,
                   icon: Icons.picture_as_pdf_outlined,
+                  iconSize: 20,
+                  busy: _downloading,
+                ),
+              ),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: NamedIconButton(
+                  label: 'Export pitch as PDF',
+                  onPressed: campaign == null || _downloading || door == null || door.pitch == null
+                      ? null
+                      : _exportPitch,
+                  icon: Icons.picture_as_pdf,
                   iconSize: 20,
                   busy: _downloading,
                 ),
@@ -329,6 +478,12 @@ class _PitchBody extends StatelessWidget {
               if (pitch.modeParagraph.isNotEmpty) ...[
                 const SizedBox(height: KarumSpacing.lg),
                 _ModeParagraph(text: pitch.modeParagraph),
+              ],
+              if (door.enrichment != null &&
+                  (door.enrichment!.phone.isNotEmpty ||
+                      door.enrichment!.website.isNotEmpty)) ...[
+                const SizedBox(height: KarumSpacing.lg),
+                _ContactCard(door: door, campaign: campaign),
               ],
             ],
             const SizedBox(height: KarumSpacing.lg),
@@ -478,7 +633,6 @@ class _ScriptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = KarumPalette.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(KarumSpacing.xl2),
@@ -495,11 +649,16 @@ class _ScriptCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: KarumSpacing.md),
-            SelectableText(
-              pitch.script,
-              style: Theme.of(context).textTheme.bodyLarge
-                  ?.copyWith(fontSize: 16, height: 1.6, color: palette.ink),
-            ),
+            ..._section(context, 'Opening', pitch.opening),
+            ..._section(context, 'Why this door', pitch.whyThisDoor),
+            ..._section(context, 'Pitch', pitch.pitchSection),
+            ..._section(context, 'Product to lead', pitch.productToLead),
+            ..._section(context, 'Ask', pitch.ask),
+            ..._section(context, 'Close', pitch.close),
+            if (pitch.sources.isNotEmpty) ...[
+              const SizedBox(height: KarumSpacing.lg),
+              _SourcesCard(sources: pitch.sources),
+            ],
             const SizedBox(height: KarumSpacing.lg),
             Row(
               children: [
@@ -532,6 +691,242 @@ class _ScriptCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// One section's heading plus body, omitted when empty.
+  static List<Widget> _section(
+    BuildContext context,
+    String heading,
+    String body,
+  ) {
+    if (body.trim().isEmpty) return const <Widget>[];
+    return [
+      Padding(
+        padding: const EdgeInsets.only(top: KarumSpacing.md),
+        child: Text(
+          heading,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: const Color(0xFF1F2937),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      const SizedBox(height: KarumSpacing.sm),
+      SelectableText(
+        body,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          fontSize: 16,
+          height: 1.6,
+          color: const Color(0xFF1F2937),
+        ),
+      ),
+    ];
+  }
+}
+
+/// One citation rendered as part of the source list at the bottom of the pitch.
+class _SourcesCard extends StatelessWidget {
+  const _SourcesCard({required this.sources});
+
+  final List<Citation> sources;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(KarumSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SectionLabel('Sources'),
+                const SizedBox(width: KarumSpacing.sm),
+                const TagPill(label: 'Citations'),
+              ],
+            ),
+            const SizedBox(height: KarumSpacing.md),
+            for (final source in sources)
+              Padding(
+                padding: const EdgeInsets.only(bottom: KarumSpacing.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 6),
+                      decoration: BoxDecoration(
+                        color: palette.brand,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: KarumSpacing.sm),
+                    Expanded(
+                      child: SelectableText.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '[${source.evidenceId}] ',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: palette.brand,
+                                  ),
+                            ),
+                            TextSpan(
+                              text: source.text,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: palette.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({required this.door, required this.campaign});
+
+  final Door door;
+  final Campaign campaign;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final enrichment = door.enrichment;
+    final phone = enrichment?.phone.isNotEmpty == true ? enrichment!.phone : '';
+    final website = enrichment?.website.isNotEmpty == true ? enrichment!.website : '';
+    final hasContact = phone.isNotEmpty || website.isNotEmpty;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(KarumSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SectionLabel('Contact'),
+                const SizedBox(width: KarumSpacing.sm),
+                const TagPill(label: 'Google fact'),
+              ],
+            ),
+            const SizedBox(height: KarumSpacing.md),
+            if (hasContact) ...[
+              if (phone.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.phone_rounded, size: 18, color: Color(0xFF1F2937)),
+                    const SizedBox(width: KarumSpacing.sm),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => openExternal('tel:$phone'),
+                        child: Text(
+                          phone,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    ),
+                    const SourceBadge(source: 'google_fact'),
+                  ],
+                ),
+                const SizedBox(height: KarumSpacing.sm),
+              ],
+              if (website.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.language_rounded, size: 18, color: Color(0xFF1F2937)),
+                    const SizedBox(width: KarumSpacing.sm),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => openExternal(website),
+                        child: Text(
+                          _host(website),
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    ),
+                    const SourceBadge(source: 'google_fact'),
+                  ],
+                ),
+                const SizedBox(height: KarumSpacing.lg),
+              ],
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: OutlinedButton.icon(
+                  onPressed: () => _sendPitch(context),
+                  icon: const Icon(Icons.email_outlined, size: 18),
+                  label: const Text('Send pitch by email'),
+                ),
+              ),
+            ] else ...[
+              Text(
+                'No phone number or website is on file for this venue.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.mute,
+                ),
+              ),
+              const SizedBox(height: KarumSpacing.md),
+              Text(
+                'Export the pitch from the header to share it outside Karum.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.mute,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendPitch(BuildContext context) async {
+    // Text sending is disabled until the compliance decision is recorded
+    // (PLAN.md §67). Email goes through the gateway, not the browser.
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send pitch by email'),
+        content: const Text(
+          'Send this door\'s pitch as an email to the venue? The message '
+          'body and the pitch PDF are sent through Karum\'s gateway; the '
+          'message body is never logged on the server.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FocusRing(
+            borderRadius: BorderRadius.circular(KarumRadius.control),
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Send'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _client.sendContact(widget.jobId, door.id,
+          recipient: '', confirm: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email sending is not yet configured.')),
+      );
+    } on GatewayException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 

@@ -12,6 +12,13 @@ import 'health_status.dart';
 import 'scout_models.dart';
 import 'scout_request.dart';
 
+/// A brand file attached to a pitch regeneration (PLAN.md §65).
+class Attachment {
+  const Attachment({required this.filename, required this.bytes});
+  final String filename;
+  final Uint8List bytes;
+}
+
 /// A city candidate returned with an HTTP 422 `ambiguous` response.
 class CityCandidate {
   const CityCandidate({required this.formattedAddress, required this.point});
@@ -354,14 +361,60 @@ class GatewayClient {
   }
 
   /// Regenerates one door pitch and returns the updated campaign.
-  Future<Campaign> regenerateDoorPitch(String jobId, String doorId) async {
+  /// ``instructions`` is the operator's direction for the redraft (PLAN.md §65):
+  /// a suggestion, not a rule. ``attachment`` optionally uploads a brand file
+  /// (.txt, .md, .pdf, capped at 2 MB) whose extracted text informs the pitch.
+  Future<Campaign> regenerateDoorPitch(
+    String jobId,
+    String doorId, {
+    String instructions = '',
+    Attachment? attachment,
+  }) async {
+    final path = '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
+        '${Uri.encodeComponent(doorId)}';
+    if (attachment != null) {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl$path'),
+      );
+      request.headers['Accept'] = 'application/json';
+      final token = _token;
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+      if (instructions.isNotEmpty) {
+        request.fields['instructions'] = instructions;
+      }
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'attachment',
+          attachment.bytes,
+          filename: attachment.filename,
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return _parse(response, Campaign.fromJson);
+      }
+      throw _errorFrom(response.statusCode, response.body);
+    }
     final response = await _send(
       'POST',
-      '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
-          '${Uri.encodeComponent(doorId)}',
+      path,
+      body: instructions.isNotEmpty ? {'instructions': instructions} : null,
       timeout: const Duration(seconds: 75),
     );
     return _parse(response, Campaign.fromJson);
+  }
+
+  /// Exports a single-door pitch as a one-page PDF (PLAN.md §66).
+  Future<Uint8List> exportPitch(String jobId, String doorId) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
+          '${Uri.encodeComponent(doorId)}/export',
+      timeout: const Duration(seconds: 75),
+    );
+    return response.bodyBytes;
   }
 
   /// Downloads the server-rendered run-sheet or flagship site brief.
@@ -381,6 +434,35 @@ class GatewayClient {
       throw _errorFrom(response.statusCode, response.body);
     }
     return response.bodyBytes;
+  }
+
+  /// Sends one door's pitch by email through the gateway (PLAN.md §67).
+  /// ``confirm`` must be true; the visitor edits subject and body before
+  /// sending. Sending goes through the gateway, never the browser.
+  Future<void> sendContact(
+    String jobId,
+    String doorId, {
+    required String recipient,
+    required bool confirm,
+    String subject = '',
+    String body = '',
+  }) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
+          '${Uri.encodeComponent(doorId)}/contact',
+      body: {
+        'recipient': recipient,
+        'confirm': confirm.toString(),
+        'subject': subject,
+        'body': body,
+      },
+      timeout: const Duration(seconds: 30),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    throw _errorFrom(response.statusCode, response.body);
   }
 
   /// Releases the underlying HTTP client.

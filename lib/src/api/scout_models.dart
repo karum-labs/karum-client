@@ -256,6 +256,7 @@ class Enrichment {
     this.address = '',
     this.hours = '',
     this.website = '',
+    this.phone = '',
     this.openStatus = 'unknown',
     this.unknown = false,
     this.lat,
@@ -266,6 +267,7 @@ class Enrichment {
   final String address;
   final String hours;
   final String website;
+  final String phone;
   final String openStatus;
   final bool unknown;
   final double? lat;
@@ -289,6 +291,7 @@ class Enrichment {
     address: _string(json['address']),
     hours: _string(json['hours']),
     website: _string(json['website']),
+    phone: _string(json['phone']),
     openStatus: _string(json['open_status'], fallback: 'unknown'),
     unknown: _bool(json['unknown']),
     lat: _double(json['lat']),
@@ -386,6 +389,32 @@ class Battlecard {
   );
 }
 
+/// One machine-readable citation referenced by the pitch prose: an evidence id
+/// plus the citation text the model wrote. Citations render as a separate
+/// source list at the bottom of the pitch rather than inline ids (PLAN.md §64).
+class Citation {
+  const Citation({required this.evidenceId, this.text = ''});
+
+  final String evidenceId;
+  final String text;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Citation && other.evidenceId == evidenceId && other.text == text;
+  }
+
+  @override
+  int get hashCode => Object.hash(evidenceId, text);
+
+  factory Citation.fromJson(Map<String, dynamic> json) {
+    return Citation(
+      evidenceId: _string(json['evidence_id']),
+      text: _string(json['text']),
+    );
+  }
+}
+
 /// One generated door pitch.
 class Pitch {
   const Pitch({
@@ -393,6 +422,13 @@ class Pitch {
     this.sku,
     this.battlecard,
     this.modeParagraph = '',
+    this.opening = '',
+    this.whyThisDoor = '',
+    this.pitchSection = '',
+    this.productToLead = '',
+    this.ask = '',
+    this.close = '',
+    this.sources = const [],
     this.template = false,
   });
 
@@ -401,12 +437,30 @@ class Pitch {
   final Battlecard? battlecard;
   final String modeParagraph;
 
+  /// The six citation-free sections of the pitch (PLAN.md §64).
+  final String opening;
+  final String whyThisDoor;
+  final String pitchSection;
+  final String productToLead;
+  final String ask;
+  final String close;
+
+  /// The machine-readable citations referenced by the prose.
+  final List<Citation> sources;
+
   /// True when the AI was unavailable and the gateway used its evidence-only
   /// template instead. The UI must label this rather than present it as a
   /// model-generated draft.
   final bool template;
 
-  bool get isEmpty => script.trim().isEmpty;
+  bool get isEmpty =>
+      script.trim().isEmpty &&
+      opening.trim().isEmpty &&
+      whyThisDoor.trim().isEmpty &&
+      pitchSection.trim().isEmpty &&
+      productToLead.trim().isEmpty &&
+      ask.trim().isEmpty &&
+      close.trim().isEmpty;
 
   factory Pitch.fromJson(Map<String, dynamic> json) {
     final sku = json['sku'];
@@ -417,6 +471,16 @@ class Pitch {
           ? Battlecard.fromJson(_map(json['battlecard']))
           : null,
       modeParagraph: _string(json['mode_paragraph']),
+      opening: _string(json['opening']),
+      whyThisDoor: _string(json['why_this_door']),
+      pitchSection: _string(json['pitch']),
+      productToLead: _string(json['product_to_lead']),
+      ask: _string(json['ask']),
+      close: _string(json['close']),
+      sources: _list(json['sources'])
+          .whereType<Map<String, dynamic>>()
+          .map((e) => Citation.fromJson(e))
+          .toList(),
       template: _bool(json['template']),
     );
   }
