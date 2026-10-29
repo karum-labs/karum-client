@@ -7,6 +7,7 @@ import 'common.dart';
 import 'evidence_sheet.dart';
 import 'focus_ring.dart';
 import 'glossary.dart';
+import 'map_selection.dart';
 
 /// The door board: recommended doors, the skip list, and the
 /// explainability tab.
@@ -21,6 +22,9 @@ class DoorBoard extends StatefulWidget {
     this.onClose,
     this.selectedDoorId,
     this.onSelectDoor,
+    this.selectedSkipId,
+    this.onSelectSkip,
+    this.selectionNonce = 0,
   });
 
   final Campaign campaign;
@@ -32,12 +36,66 @@ class DoorBoard extends StatefulWidget {
   final String? selectedDoorId;
   final ValueChanged<String?>? onSelectDoor;
 
+  /// The selected skipped venue, named with [skipSelectionId].
+  final String? selectedSkipId;
+  final ValueChanged<String?>? onSelectSkip;
+
+  /// Changes on every pin tap. A new value brings the matching tab forward
+  /// and scrolls to the entry, even when the same pin is tapped again.
+  final int selectionNonce;
+
   @override
   State<DoorBoard> createState() => _DoorBoardState();
 }
 
-class _DoorBoardState extends State<DoorBoard> {
+/// Tab positions on the board.
+const int _recommendedTab = 0;
+const int _skipTab = 1;
+
+class _DoorBoardState extends State<DoorBoard>
+    with SingleTickerProviderStateMixin {
   bool _showBaseline = false;
+  late final TabController _tabs;
+
+  /// The tab a pin tap points at: Recommended for a door, Skip for a skipped
+  /// venue, or null when nothing is selected.
+  int? get _selectionTab => widget.selectedSkipId != null
+      ? _skipTab
+      : widget.selectedDoorId != null
+      ? _recommendedTab
+      : null;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: _selectionTab ?? _recommendedTab,
+    );
+  }
+
+  @override
+  void didUpdateWidget(DoorBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final target = _selectionTab;
+    if (widget.selectionNonce == oldWidget.selectionNonce ||
+        target == null ||
+        _tabs.index == target) {
+      return;
+    }
+    // Moving the tab notifies the TabBar, which cannot rebuild in the middle
+    // of this update, so it waits for the frame to finish.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tabs.animateTo(target);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,119 +103,119 @@ class _DoorBoardState extends State<DoorBoard> {
     final campaign = widget.campaign;
     return _CampaignLookup(
       campaign: campaign,
-      child: DefaultTabController(
-        length: 3,
-        child: Container(
-          color: palette.surface,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  KarumSpacing.xl,
-                  KarumSpacing.xl,
-                  KarumSpacing.xl,
-                  KarumSpacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: SectionLabel('Door board')),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+      child: Container(
+        color: palette.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                KarumSpacing.xl,
+                KarumSpacing.xl,
+                KarumSpacing.xl,
+                KarumSpacing.sm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: SectionLabel('Door board')),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(KarumRadius.pill),
+                          border: Border.all(color: palette.line),
+                        ),
+                        child: Text(
+                          'server order',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: palette.mute),
+                        ),
+                      ),
+                      if (widget.onClose != null)
+                        FocusRing(
+                          borderRadius: BorderRadius.circular(
+                            KarumRadius.control,
                           ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              KarumRadius.pill,
-                            ),
-                            border: Border.all(color: palette.line),
-                          ),
-                          child: Text(
-                            'server order',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: palette.mute),
+                          child: NamedIconButton(
+                            label: 'Close Door board',
+                            onPressed: widget.onClose,
+                            icon: Icons.close_rounded,
+                            iconSize: 18,
                           ),
                         ),
-                        if (widget.onClose != null)
-                          FocusRing(
-                            borderRadius: BorderRadius.circular(
-                              KarumRadius.control,
-                            ),
-                            child: NamedIconButton(
-                              label: 'Close Door board',
-                              onPressed: widget.onClose,
-                              icon: Icons.close_rounded,
-                              iconSize: 18,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: KarumSpacing.xs),
-                    Text(
-                      campaign.doors.isEmpty
-                          ? 'No doors cleared the floor.'
-                          : '${campaign.doors.length} doors · '
-                                'tap a card for the pitch and route',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                    // First use of "door board" on the workspace: one-line
-                    // gloss so a first-time visitor can follow the tabs
-                    // without the glossary sheet (PLAN.md §51).
-                    const GlossNote(term: 'Door board'),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: KarumSpacing.xl,
-                ),
-                child: _BaselineToggle(
-                  value: _showBaseline,
-                  onChanged: (value) => setState(() => _showBaseline = value),
-                ),
-              ),
-              const SizedBox(height: KarumSpacing.xs),
-              TabBar(
-                labelColor: palette.brand,
-                unselectedLabelColor: palette.mute,
-                indicatorColor: palette.brand,
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelStyle: const TextStyle(
-                  fontFamily: KarumFonts.body,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-                tabs: [
-                  Tab(text: 'Recommended (${campaign.doors.length})'),
-                  Tab(text: 'Skip (${campaign.skipList.length})'),
-                  const Tab(text: 'How we know'),
+                    ],
+                  ),
+                  const SizedBox(height: KarumSpacing.xs),
+                  Text(
+                    campaign.doors.isEmpty
+                        ? 'No doors cleared the floor.'
+                        : '${campaign.doors.length} doors · '
+                              'tap a card for the pitch and route',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
+                  ),
+                  // First use of "door board" on the workspace: one-line
+                  // gloss so a first-time visitor can follow the tabs
+                  // without the glossary sheet (PLAN.md §51).
+                  const GlossNote(term: 'Door board'),
                 ],
               ),
-              Divider(height: 1, color: palette.line),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _RecommendedTab(
-                      campaign: campaign,
-                      showBaseline: _showBaseline,
-                      onOpenPitch: widget.onOpenPitch,
-                      onRegenerate: widget.onRegenerate,
-                      regeneratingDoorId: widget.regeneratingDoorId,
-                      selectedDoorId: widget.selectedDoorId,
-                      onSelectDoor: widget.onSelectDoor,
-                    ),
-                    _SkipTab(campaign: campaign),
-                    _ExplainTab(campaign: campaign),
-                  ],
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: KarumSpacing.xl),
+              child: _BaselineToggle(
+                value: _showBaseline,
+                onChanged: (value) => setState(() => _showBaseline = value),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: KarumSpacing.xs),
+            TabBar(
+              controller: _tabs,
+              labelColor: palette.brand,
+              unselectedLabelColor: palette.mute,
+              indicatorColor: palette.brand,
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelStyle: const TextStyle(
+                fontFamily: KarumFonts.body,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              tabs: [
+                Tab(text: 'Recommended (${campaign.doors.length})'),
+                Tab(text: 'Skip (${campaign.skipList.length})'),
+                const Tab(text: 'How we know'),
+              ],
+            ),
+            Divider(height: 1, color: palette.line),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: [
+                  _RecommendedTab(
+                    campaign: campaign,
+                    showBaseline: _showBaseline,
+                    onOpenPitch: widget.onOpenPitch,
+                    onRegenerate: widget.onRegenerate,
+                    regeneratingDoorId: widget.regeneratingDoorId,
+                    selectedDoorId: widget.selectedDoorId,
+                    onSelectDoor: widget.onSelectDoor,
+                    selectionNonce: widget.selectionNonce,
+                  ),
+                  _SkipTab(
+                    campaign: campaign,
+                    selectedSkipId: widget.selectedSkipId,
+                    selectionNonce: widget.selectionNonce,
+                  ),
+                  _ExplainTab(campaign: campaign),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -209,6 +267,27 @@ class _BaselineToggle extends StatelessWidget {
   }
 }
 
+/// Scrolls the row behind [keyOf] into view after the current frame.
+///
+/// The tabs below build every row up front (a column in a scroll view, not a
+/// lazy list), so each row's key has a context and `ensureVisible` can always
+/// find it. A lazily built list would have no element for a row far down.
+///
+/// The key is looked up inside the callback, not passed in: on a tab's first
+/// build the key does not exist until that same build creates it.
+void _scrollRowIntoView(GlobalKey? Function() keyOf, bool Function() mounted) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final target = keyOf()?.currentContext;
+    if (target == null || !mounted()) return;
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      alignment: 0.05,
+    );
+  });
+}
+
 class _RecommendedTab extends StatefulWidget {
   const _RecommendedTab({
     required this.campaign,
@@ -218,8 +297,10 @@ class _RecommendedTab extends StatefulWidget {
     required this.regeneratingDoorId,
     this.selectedDoorId,
     this.onSelectDoor,
+    this.selectionNonce = 0,
   });
 
+  final int selectionNonce;
   final Campaign campaign;
   final bool showBaseline;
   final ValueChanged<Door>? onOpenPitch;
@@ -235,22 +316,28 @@ class _RecommendedTab extends StatefulWidget {
 class _RecommendedTabState extends State<_RecommendedTab> {
   final ScrollController _scroll = ScrollController();
   final Map<String, GlobalKey> _doorKeys = {};
-  String? _lastSelectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    // The tab may be built because a pin was tapped while another tab was
+    // showing; the selection is already in place, so scroll to it now.
+    if (widget.selectedDoorId != null) _revealSelected();
+  }
 
   @override
   void didUpdateWidget(_RecommendedTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final next = widget.selectedDoorId;
-    if (next == null || next == _lastSelectedId) return;
-    _lastSelectedId = next;
-    if (!widget.campaign.doors.any((d) => d.id == next)) return;
-    final context = _doorKeys[next]?.currentContext;
-    if (context == null || !mounted) return;
-    Scrollable.ensureVisible(
-      context,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    if (widget.selectionNonce != oldWidget.selectionNonce &&
+        widget.selectedDoorId != null) {
+      _revealSelected();
+    }
+  }
+
+  void _revealSelected() {
+    final id = widget.selectedDoorId;
+    if (id == null || !widget.campaign.doors.any((d) => d.id == id)) return;
+    _scrollRowIntoView(() => _doorKeys[id], () => mounted);
   }
 
   @override
@@ -264,58 +351,61 @@ class _RecommendedTabState extends State<_RecommendedTab> {
     final palette = KarumPalette.of(context);
     final campaign = widget.campaign;
     final showBaseline = widget.showBaseline;
-    return ListView(
+    return SingleChildScrollView(
       controller: _scroll,
       padding: const EdgeInsets.all(KarumSpacing.lg),
-      children: [
-        if (showBaseline) ...[
-          _BaselineCard(baseline: campaign.baseline),
-          const SizedBox(height: KarumSpacing.lg),
-        ],
-        if (campaign.doors.isEmpty)
-          _NoDoors(campaign: campaign)
-        else
-          for (var i = 0; i < campaign.doors.length; i++) ...[
-            if (i > 0) const SizedBox(height: KarumSpacing.md),
-            _DoorCard(
-              key: _doorKeys.putIfAbsent(
-                campaign.doors[i].id,
-                () => GlobalKey(),
-              ),
-              door: campaign.doors[i],
-              firstStop: i == 0,
-              selected: campaign.doors[i].id == widget.selectedDoorId,
-              onOpenPitch: widget.onOpenPitch,
-              onRegenerate: widget.onRegenerate,
-              regenerating: widget.regeneratingDoorId == campaign.doors[i].id,
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showBaseline) ...[
+            _BaselineCard(baseline: campaign.baseline),
+            const SizedBox(height: KarumSpacing.lg),
           ],
-        if (campaign.warnings.isNotEmpty) ...[
-          const SizedBox(height: KarumSpacing.lg),
-          for (final warning in campaign.warnings)
-            Padding(
-              padding: const EdgeInsets.only(bottom: KarumSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    size: 16,
-                    color: palette.investigate,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      warning,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                  ),
-                ],
+          if (campaign.doors.isEmpty)
+            _NoDoors(campaign: campaign)
+          else
+            for (var i = 0; i < campaign.doors.length; i++) ...[
+              if (i > 0) const SizedBox(height: KarumSpacing.md),
+              _DoorCard(
+                key: _doorKeys.putIfAbsent(
+                  campaign.doors[i].id,
+                  () => GlobalKey(),
+                ),
+                door: campaign.doors[i],
+                firstStop: i == 0,
+                selected: campaign.doors[i].id == widget.selectedDoorId,
+                onOpenPitch: widget.onOpenPitch,
+                onRegenerate: widget.onRegenerate,
+                regenerating: widget.regeneratingDoorId == campaign.doors[i].id,
               ),
-            ),
+            ],
+          if (campaign.warnings.isNotEmpty) ...[
+            const SizedBox(height: KarumSpacing.lg),
+            for (final warning in campaign.warnings)
+              Padding(
+                padding: const EdgeInsets.only(bottom: KarumSpacing.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: palette.investigate,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        warning,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: palette.mute),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -846,14 +936,56 @@ class _NoDoors extends StatelessWidget {
   }
 }
 
-class _SkipTab extends StatelessWidget {
-  const _SkipTab({required this.campaign});
+class _SkipTab extends StatefulWidget {
+  const _SkipTab({
+    required this.campaign,
+    this.selectedSkipId,
+    this.selectionNonce = 0,
+  });
 
   final Campaign campaign;
+  final String? selectedSkipId;
+  final int selectionNonce;
+
+  @override
+  State<_SkipTab> createState() => _SkipTabState();
+}
+
+class _SkipTabState extends State<_SkipTab> {
+  final ScrollController _scroll = ScrollController();
+  final Map<String, GlobalKey> _rowKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selectedSkipId != null) _revealSelected();
+  }
+
+  @override
+  void didUpdateWidget(_SkipTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectionNonce != oldWidget.selectionNonce &&
+        widget.selectedSkipId != null) {
+      _revealSelected();
+    }
+  }
+
+  void _revealSelected() {
+    final id = widget.selectedSkipId;
+    if (id == null) return;
+    _scrollRowIntoView(() => _rowKeys[id], () => mounted);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
+    final campaign = widget.campaign;
     if (campaign.skipList.isEmpty) {
       return PanePlaceholder(
         icon: Icons.checklist_rounded,
@@ -867,108 +999,130 @@ class _SkipTab extends StatelessWidget {
     // Prepend a one-line gloss so a first-time visitor knows what the Skip
     // tab is before they read the rows (PLAN.md §51). The leading note is a
     // non-selectable header row.
-    return ListView.separated(
-      padding: const EdgeInsets.all(KarumSpacing.lg),
-      itemCount: campaign.skipList.length + 1,
-      separatorBuilder: (_, _) => const SizedBox(height: KarumSpacing.sm),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: KarumSpacing.xs),
-            child: GlossNote(term: 'Skip list'),
-          );
-        }
-        final skip = campaign.skipList[index - 1];
-        return Container(
-          padding: const EdgeInsets.all(KarumSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(KarumRadius.control),
-            border: Border.all(color: palette.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.do_not_disturb_on_outlined,
-                    size: 18,
-                    color: palette.avoid,
+    Widget row(int index) {
+      final skip = campaign.skipList[index];
+      final id = skipSelectionId(index, skip);
+      final selected = id == widget.selectedSkipId;
+      final card = Container(
+        padding: const EdgeInsets.all(KarumSpacing.md),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(KarumRadius.control),
+          border: Border.all(color: palette.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.do_not_disturb_on_outlined,
+                  size: 18,
+                  color: palette.avoid,
+                ),
+                const SizedBox(width: KarumSpacing.sm),
+                Expanded(
+                  child: Text(
+                    skip.name,
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(color: palette.ink),
                   ),
-                  const SizedBox(width: KarumSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      skip.name,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(color: palette.ink),
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: KarumSpacing.xs),
+            // The gateway's own explanation of the skip: the numbers behind
+            // the reason code. Empty when the gateway did not send one.
+            if (skip.reasonDetail.isNotEmpty) ...[
+              Text(
+                skip.reasonDetail,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.mute),
               ),
               const SizedBox(height: KarumSpacing.xs),
-              // The gateway's own explanation of the skip: the numbers behind
-              // the reason code. Empty when the gateway did not send one.
-              if (skip.reasonDetail.isNotEmpty) ...[
-                Text(
-                  skip.reasonDetail,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: palette.mute),
-                ),
-                const SizedBox(height: KarumSpacing.xs),
-              ],
-              Text(
-                skip.reasonLabel,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.avoid,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: KarumSpacing.sm),
-              Wrap(
-                spacing: KarumSpacing.lg,
-                runSpacing: KarumSpacing.xs,
-                children: [
-                  if (skip.rawAffinity > 0)
-                    Text(
-                      'raw affinity ${skip.rawAffinity.toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                  if (skip.floor > 0)
-                    Text(
-                      'floor ${skip.floor.toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                  if (skip.competitorCount > 0)
-                    Text(
-                      '${skip.competitorCount} incumbents',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                  if (skip.point == null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_off_outlined,
-                          size: 12,
-                          color: palette.mute,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'No map point',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: palette.mute),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
             ],
+            Text(
+              skip.reasonLabel,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.avoid, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: KarumSpacing.sm),
+            Wrap(
+              spacing: KarumSpacing.lg,
+              runSpacing: KarumSpacing.xs,
+              children: [
+                if (skip.rawAffinity > 0)
+                  Text(
+                    'raw affinity ${skip.rawAffinity.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
+                  ),
+                if (skip.floor > 0)
+                  Text(
+                    'floor ${skip.floor.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
+                  ),
+                if (skip.competitorCount > 0)
+                  Text(
+                    '${skip.competitorCount} incumbents',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: palette.mute),
+                  ),
+                if (skip.point == null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.location_off_outlined,
+                        size: 12,
+                        color: palette.mute,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'No map point',
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: palette.mute),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+      // The selected row carries the same edge mark a selected door card
+      // does, in the Avoid colour that marks a skipped venue.
+      return KeyedSubtree(
+        key: _rowKeys.putIfAbsent(id, GlobalKey.new),
+        child: selected
+            ? Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: palette.avoid, width: 3),
+                  ),
+                ),
+                child: card,
+              )
+            : card,
+      );
+    }
+
+    return SingleChildScrollView(
+      controller: _scroll,
+      padding: const EdgeInsets.all(KarumSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: KarumSpacing.xs),
+            child: GlossNote(term: 'Skip list'),
           ),
-        );
-      },
+          for (var i = 0; i < campaign.skipList.length; i++) ...[
+            const SizedBox(height: KarumSpacing.sm),
+            row(i),
+          ],
+        ],
+      ),
     );
   }
 }

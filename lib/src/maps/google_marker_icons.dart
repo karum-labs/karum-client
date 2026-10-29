@@ -12,7 +12,9 @@ import '../theme/brand_tokens.dart';
 /// every default marker renders as the same red pin. These bitmaps are drawn
 /// explicitly and handed to [BitmapDescriptor.bytes], which the web plugin
 /// supports. Recommended doors get a numbered circle; skipped venues get a
-/// hollow red ring with a minus.
+/// filled disc in the Avoid colour with a minus. Both kinds share one size at
+/// every state, so a skipped pin reads as the twin of a recommended one and
+/// the minus and colour, not size, mark it as skipped.
 class GoogleMarkerIcons {
   GoogleMarkerIcons(this.palette);
 
@@ -20,11 +22,10 @@ class GoogleMarkerIcons {
 
   static const double doorSize = 36;
   static const double selectedDoorSize = 44;
-  static const double skipSize = 46;
 
   static String doorKey(int rank, {required bool selected}) =>
       'door:$rank:$selected';
-  static const String skipKey = 'skip';
+  static String skipKey({required bool selected}) => 'skip:$selected';
 
   final Map<String, Future<BitmapDescriptor>> _cache = {};
 
@@ -35,8 +36,11 @@ class GoogleMarkerIcons {
     );
   }
 
-  Future<BitmapDescriptor> skip() {
-    return _cache.putIfAbsent(skipKey, _renderSkip);
+  Future<BitmapDescriptor> skip({bool selected = false}) {
+    return _cache.putIfAbsent(
+      skipKey(selected: selected),
+      () => _renderSkip(selected: selected),
+    );
   }
 
   Future<BitmapDescriptor> _renderDoor(
@@ -86,30 +90,43 @@ class GoogleMarkerIcons {
     return BitmapDescriptor.bytes(bytes, width: size, height: size);
   }
 
-  Future<BitmapDescriptor> _renderSkip() async {
+  Future<BitmapDescriptor> _renderSkip({required bool selected}) async {
+    final size = selected ? selectedDoorSize : doorSize;
     final bytes = await _render(
-      size: skipSize,
+      size: size,
       draw: (canvas, center, radius, scale) {
+        canvas.drawCircle(
+          center.translate(0, 1.5 * scale),
+          radius,
+          ui.Paint()
+            ..color = palette.ink.withValues(alpha: 0.16)
+            ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 1.5 * scale),
+        );
+        canvas.drawCircle(center, radius, ui.Paint()..color = palette.avoid);
+        // The ring echoes the door marker's edge: the surface colour when
+        // selected, the fill colour otherwise.
         canvas.drawCircle(
           center,
           radius,
           ui.Paint()
-            ..color = palette.avoid
+            ..color = selected ? palette.surface : palette.avoid
             ..style = ui.PaintingStyle.stroke
-            ..strokeWidth = 2.4 * scale,
+            ..strokeWidth = 2 * scale,
         );
+        // The minus is knocked out in the surface colour, which clears AA on
+        // the Avoid fill in both palettes (7.41:1 light, 7.04:1 dark).
         final half = radius * 0.42;
         canvas.drawLine(
           center.translate(-half, 0),
           center.translate(half, 0),
           ui.Paint()
-            ..color = palette.avoid
-            ..strokeWidth = 2.4 * scale
+            ..color = palette.surface
+            ..strokeWidth = 2.6 * scale
             ..strokeCap = ui.StrokeCap.round,
         );
       },
     );
-    return BitmapDescriptor.bytes(bytes, width: skipSize, height: skipSize);
+    return BitmapDescriptor.bytes(bytes, width: size, height: size);
   }
 
   Future<Uint8List> _render({

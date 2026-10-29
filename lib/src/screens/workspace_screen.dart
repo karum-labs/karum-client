@@ -55,6 +55,11 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   bool _downloading = false;
   String? _regeneratingDoorId;
   String? _selectedDoorId;
+  String? _selectedSkipId;
+
+  /// Counts every pin tap, so tapping the same pin again after scrolling the
+  /// board away scrolls back to it. The ids alone cannot say that.
+  int _selectionNonce = 0;
   final Set<String> _closedPanes = {};
   int _pollFailures = 0;
   bool _refreshing = false;
@@ -432,8 +437,23 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     Navigator.of(context).pushNamed('/scout/$id/doors/${door.id}');
   }
 
+  /// One pin is selected at a time: choosing a door clears the selected skip
+  /// and the reverse. A non-null choice bumps the nonce so the board brings
+  /// the right tab forward and scrolls to the entry, even for a repeat tap.
   void _selectDoor(String? doorId) {
-    setState(() => _selectedDoorId = doorId);
+    setState(() {
+      _selectedDoorId = doorId;
+      _selectedSkipId = null;
+      if (doorId != null) _selectionNonce++;
+    });
+  }
+
+  void _selectSkip(String? skipId) {
+    setState(() {
+      _selectedSkipId = skipId;
+      _selectedDoorId = null;
+      if (skipId != null) _selectionNonce++;
+    });
   }
 
   void _snack(String message) {
@@ -602,6 +622,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                   onOpenPitch: _openDoor,
                   selectedDoorId: _selectedDoorId,
                   onSelectDoor: _selectDoor,
+                  selectedSkipId: _selectedSkipId,
+                  onSelectSkip: _selectSkip,
                 ),
         ),
         VerticalDivider(width: 1, color: KarumPalette.of(context).line),
@@ -618,6 +640,9 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                   regeneratingDoorId: _regeneratingDoorId,
                   selectedDoorId: _selectedDoorId,
                   onSelectDoor: _selectDoor,
+                  selectedSkipId: _selectedSkipId,
+                  onSelectSkip: _selectSkip,
+                  selectionNonce: _selectionNonce,
                   isClosed: false,
                   onClose: () => setState(() => _closedPanes.add('board')),
                 ),
@@ -693,6 +718,8 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                         onOpenPitch: _openDoor,
                         selectedDoorId: _selectedDoorId,
                         onSelectDoor: _selectDoor,
+                        selectedSkipId: _selectedSkipId,
+                        onSelectSkip: _selectSkip,
                       ),
                 if (openBoard)
                   _campaign == null
@@ -707,6 +734,9 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
                               setState(() => _closedPanes.add('board')),
                           selectedDoorId: _selectedDoorId,
                           onSelectDoor: _selectDoor,
+                          selectedSkipId: _selectedSkipId,
+                          onSelectSkip: _selectSkip,
+                          selectionNonce: _selectionNonce,
                         ),
               ],
             ),

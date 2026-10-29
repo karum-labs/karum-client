@@ -8,6 +8,7 @@ import '../maps/google_door_map.dart';
 import '../theme/brand_tokens.dart';
 import '../util/polyline.dart';
 import 'common.dart';
+import 'map_selection.dart';
 
 /// The map/list surface for a campaign.
 ///
@@ -24,12 +25,19 @@ class MapPanel extends StatefulWidget {
     this.onOpenPitch,
     this.selectedDoorId,
     this.onSelectDoor,
+    this.selectedSkipId,
+    this.onSelectSkip,
   });
 
   final Campaign campaign;
   final ValueChanged<Door>? onOpenPitch;
   final String? selectedDoorId;
   final ValueChanged<String?>? onSelectDoor;
+
+  /// The selected skipped venue, named with [skipSelectionId], and the
+  /// callback a skipped pin calls — the same pair a recommended pin has.
+  final String? selectedSkipId;
+  final ValueChanged<String?>? onSelectSkip;
 
   @override
   State<MapPanel> createState() => _MapPanelState();
@@ -59,6 +67,12 @@ class _MapPanelState extends State<MapPanel> {
     final skipsWithPoints = campaign.skipList
         .where((skip) => skip.point != null)
         .toList();
+    // Selection ids come from the position in the full skip list, which the
+    // board uses too; the filtered list above has different positions.
+    final skipIds = <SkipItem, String>{
+      for (var i = 0; i < campaign.skipList.length; i++)
+        campaign.skipList[i]: skipSelectionId(i, campaign.skipList[i]),
+    };
     final cells =
         campaign.heatmap?.cells.where((cell) => cell.point.isValid).toList() ??
         const <HeatmapCell>[];
@@ -96,6 +110,7 @@ class _MapPanelState extends State<MapPanel> {
                     center,
                     doorsWithPoints,
                     skipsWithPoints,
+                    skipIds,
                   ),
           ),
         ],
@@ -228,6 +243,7 @@ class _MapPanelState extends State<MapPanel> {
     GeoPoint center,
     List<Door> doorsWithPoints,
     List<SkipItem> skipsWithPoints,
+    Map<SkipItem, String> skipIds,
   ) {
     final palette = KarumPalette.of(context);
     final heatmap = campaign.heatmap;
@@ -352,17 +368,35 @@ class _MapPanelState extends State<MapPanel> {
                           for (final skip in skipsWithPoints)
                             Marker(
                               point: LatLng(skip.point!.lat, skip.point!.lng),
-                              width: 46,
-                              height: 46,
+                              width: skipIds[skip] == widget.selectedSkipId
+                                  ? 54
+                                  : 46,
+                              height: skipIds[skip] == widget.selectedSkipId
+                                  ? 54
+                                  : 46,
                               alignment: Alignment.center,
                               child: Semantics(
                                 container: true,
+                                button: true,
+                                excludeSemantics: true,
                                 label:
                                     'Skipped door ${skip.name}: ${skip.reasonLabel}',
+                                onTap: () =>
+                                    widget.onSelectSkip?.call(skipIds[skip]),
                                 child: Tooltip(
                                   message: '${skip.name} · ${skip.reasonLabel}',
                                   excludeFromSemantics: true,
-                                  child: const _SkipPin(),
+                                  child: InkWell(
+                                    onTap: () => widget.onSelectSkip?.call(
+                                      skipIds[skip],
+                                    ),
+                                    customBorder: const CircleBorder(),
+                                    excludeFromSemantics: true,
+                                    child: _SkipPin(
+                                      selected:
+                                          skipIds[skip] == widget.selectedSkipId,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -410,6 +444,10 @@ class _MapPanelState extends State<MapPanel> {
                     brand: palette.brand,
                     doors: doorsWithPoints,
                     skips: skipsWithPoints,
+                    skipIds: [for (final skip in skipsWithPoints) skipIds[skip]!],
+                    selectedSkipId: widget.selectedSkipId,
+                    onSelectSkip: widget.onSelectSkip,
+                    onOpenPitch: widget.onOpenPitch,
                     cells: cells,
                     localities: localities,
                     routePoints: routePoints,
@@ -428,7 +466,11 @@ class _MapPanelState extends State<MapPanel> {
             hasSkips: skipsWithPoints.isNotEmpty,
           ),
         ),
-        if (_selectedDoor != null)
+        // On the Google canvas the pin's own bubble carries the door's
+        // details and the "Open pitch & route" action, so this card would be
+        // a second surface for the same tap (PLAN.md §63). The fallback
+        // canvas has no bubble, so it keeps the card.
+        if (_selectedDoor != null && AppConfig.googleMapsWebKey.isEmpty)
           Positioned(
             left: KarumSpacing.md,
             right: KarumSpacing.md,
@@ -758,10 +800,11 @@ class _DoorPin extends StatelessWidget {
 }
 
 class _SkipPin extends StatelessWidget {
-  const _SkipPin({this.size, this.iconSize});
+  const _SkipPin({this.size, this.iconSize, this.selected = false});
 
   final double? size;
   final double? iconSize;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -771,7 +814,8 @@ class _SkipPin extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: palette.avoid, width: 2),
+        color: selected ? palette.avoid.withValues(alpha: 0.14) : null,
+        border: Border.all(color: palette.avoid, width: selected ? 3 : 2),
       ),
       alignment: Alignment.center,
       child: Icon(Icons.remove, size: iconSize ?? 18, color: palette.avoid),
