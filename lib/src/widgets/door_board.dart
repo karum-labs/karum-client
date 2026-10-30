@@ -1249,11 +1249,6 @@ class _ExplainTab extends StatelessWidget {
             label: const Text('Open evidence drawer'),
           ),
         ),
-        if (campaign.baseline.hasText ||
-            campaign.baseline.errorCode.isNotEmpty) ...[
-          const SizedBox(height: KarumSpacing.xl),
-          _BaselineCard(baseline: campaign.baseline),
-        ],
       ],
     );
   }
@@ -1308,8 +1303,8 @@ class _BaselineCard extends StatelessWidget {
             Text(
               baseline.errorCode.isEmpty
                   ? 'The baseline was not stored for this run.'
-                  : 'Baseline unavailable (${baseline.errorCode}). The Qloo '
-                        'board above is unaffected.',
+                  : 'The generic LLM answer could not be generated for this '
+                        'run. The Qloo board is unaffected.',
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: palette.mute),
             ),

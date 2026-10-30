@@ -129,6 +129,39 @@ class _LandingScreenState extends State<LandingScreen> {
     }
   }
 
+  /// "Try now": sign in as the judge and open the account page, which lists
+  /// the stored campaigns. An existing session just goes there.
+  Future<void> _tryNow() async {
+    if (_submitting) return;
+    final scope = AppScope.maybeOf(context);
+    if (scope == null) {
+      setState(() => _error = 'Demo access is unavailable in this build.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      if (scope.session == null) await scope.judgeSignIn();
+      if (!mounted) return;
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/account', (route) => false);
+    } on GatewayException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Demo access failed. Try signing in instead.');
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// Whether the "Start from a previous run" cards show on the landing page.
+  static const bool _showPresetSection = false;
+
+  // ignore: unused_element -- kept for when the preset section comes back.
   void _scrollToPresets() {
     final target = _presetsKey.currentContext;
     if (target != null) {
@@ -509,13 +542,17 @@ class _LandingScreenState extends State<LandingScreen> {
                       children: [
                         _Hero(
                           compact: width < 900,
-                          onTryNow: _scrollToPresets,
+                          onTryNow: _tryNow,
                           onNewScout: _scrollToBuilder,
                           presets: scope?.presets,
                         ),
                         const SizedBox(height: 52),
-                        _buildPresetSection(width, scope),
-                        const SizedBox(height: 52),
+                        // The "judge path, one click away" section is hidden
+                        // for now; flip this to bring it back.
+                        if (_showPresetSection) ...[
+                          _buildPresetSection(width, scope),
+                          const SizedBox(height: 52),
+                        ],
                         _buildBuilder(context, width),
                         const SizedBox(height: KarumSpacing.page),
                         _Footer(
@@ -1078,7 +1115,7 @@ class _Hero extends StatelessWidget {
 
   final bool compact;
 
-  /// "Try now" — jumps straight to the previous-run cards.
+  /// "Try now" — signs in as the judge and opens the account page.
   final VoidCallback onTryNow;
 
   /// "New scout" — jumps to the free-entry builder ("Build a search
