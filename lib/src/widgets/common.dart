@@ -217,6 +217,22 @@ class ScoreBar extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
+              if (known && score!.source != 'model_inference')
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: palette.ink.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(KarumRadius.pill),
+                  ),
+                  child: Text(
+                    score!.source.replaceAll('_', ' '),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: palette.ink,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 5),
