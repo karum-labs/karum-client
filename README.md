@@ -5,187 +5,107 @@
 
 <div align="center">
 
+### Karum — the expansion agent for consumer brands
+
+Tell it a brand and a city. It tells you which stores to pitch, where to open, who to partner with, and which doors to skip.
+
+[![Live Demo](https://img.shields.io/badge/▶%20Try%20the%20live%20demo-karum--512016.web.app-00BFA6?logoColor=white)](https://karum-512016.web.app)
+[![Watch the demo](https://img.shields.io/badge/▶%20Watch%20the%202--min%20demo-Vimeo-1AB7EA?logo=vimeo&logoColor=white)](https://vimeo.com/1241448615)
 [![MIT License](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
-[![Qloo Agentic Hackathon 2026](https://img.shields.io/badge/Qloo-Agentic%20Hackathon%202026-6C5CE7?logo=hackathon&logoColor=white)](https://devpost.com)
-[![Demo](https://img.shields.io/badge/Live%20Demo-karum--512016.web.app-00BFA6?logo=firebase&logoColor=white)](https://karum-512016.web.app)
+[![Qloo Agentic Hackathon 2026](https://img.shields.io/badge/Qloo-Agentic%20Hackathon%202026-6C5CE7)](https://devpost.com)
 
 </div>
 
 ---
 
-## Product
+## Watch the demo
 
-**Karum** is an agentic B2B retail distribution and site-selection platform built for the **Qloo Agentic Hackathon 2026**. Operated by emerging and scaling consumer brands (Food & Beverage, Craft Spirits, Specialty CPG, Apparel, Lifestyle), Karum closes the gap between a brand and physical retail.
+<div align="center">
 
-Given a brand identity — or a composite cultural vibe — and a target city, Karum queries Qloo's Taste Graph to decode the cultural and demographic DNA of every block and venue. It tells a brand **which independent stores, bars, and cafes ("doors") to pitch**, **where to open a flagship store or weekend pop-up**, **which non-competing boutiques to partner with**, **which accounts to skip**, then audits each venue's live menu for competitors, calculates an optimized field-sales route, and drafts hyper-personalized B2B sales scripts and displacement battlecards.
+[![Watch the Karum demo on Vimeo](assets/brand/social/devpost-thumbnail-1200x800.png)](https://vimeo.com/1241448615)
 
-> **Hosted demo:** https://karum-512016.web.app  
-> **Public client link:** `<!-- TODO: insert public karum-client URL (Firebase Hosting / Devpost) -->`  
-> *`make demo-refresh` in `karum-infra` builds and deploys this repo.*
+**▶ [Watch the 3-minute walkthrough on Vimeo](https://vimeo.com/1241448615)**
 
----
-
-## Karum at a glance — the five-repo layout
-
-Karum is split into five decoupled repositories so the UI, gateway, taste engine, and AI engine can be built in parallel.
-
-<table>
-  <tr>
-    <td><b>Repo</b></td>
-    <td><b>Role</b></td>
-    <td><b>Contains / owns</b></td>
-  </tr>
-  <tr>
-    <td><b><code>karum-infra</code></b><br><sup>Shared platform</sup></td>
-    <td>Protos, laptop run path, demo VM</td>
-    <td>Protobuf contracts (<code>karum.taste.v1</code>, <code>karum.agent.v1</code>), docker-compose local stack, Cloud Run manifests, Makefile, CI, fixture pack</td>
-  </tr>
-  <tr>
-    <td><b><code>karum-client</code></b> ← this repo<br><sup>Frontend</sup></td>
-    <td>Flutter UI (web / desktop)</td>
-    <td>Judge-ready Flutter web UI; desktop runs the same screens</td>
-  </tr>
-  <tr>
-    <td><b><code>karum-server</code></b><br><sup>Gateway</sup></td>
-    <td>Go + Gin API gateway</td>
-    <td>REST/SSE to the client, gRPC to <code>service-taste</code> + <code>service-ai</code>, Google Places/Routes, PDF run-sheets and site briefs</td>
-  </tr>
-  <tr>
-    <td><b><code>karum-service-taste</code></b><br><sup>Qloo engine</sup></td>
-    <td>Qloo integration, caching, taste scoring</td>
-    <td>Python FastAPI + gRPC; all Qloo Taste Graph calls, seed/tag/door/heatmap/compare resolution, Redis caching by parameter hash</td>
-  </tr>
-  <tr>
-    <td><b><code>karum-service-ai</code></b><br><sup>AI engine</sup></td>
-    <td>Vertex AI, search grounding, pitch drafting</td>
-    <td>Python FastAPI + gRPC; Vertex AI Gemini + Google Search Grounding, menu audit, SKU choice, pitch script, displacement battlecard, LLM-only baseline</td>
-  </tr>
-</table>
-
-System flow:
-
-```
-┌──────────────┐        POST /api/v1/scout        ┌─────────────────┐
-│ Flutter      │ ─────────────────────────────────►│ Go + Gin        │
-│ client       │                                    │ gateway         │
-│ (karum-client)│ ◄──────────────────────────────── │ (karum-server)  │
-└──────────────┘           trace events + payload   └────────┬────────┘
-                                                             │
-                             ┌───────────────┬──────────────┴───────────────┐
-                             ▼               ▼                              ▼
-                    ┌──────────────┐  ┌──────────────┐          ┌──────────────┐
-                    │ service-taste│  │ service-ai   │          │ Google       │
-                    │ (Qloo engine)│  │ (Vertex AI)  │          │ Places /     │
-                    └──────┬───────┘  └──────┬───────┘          │ Routes API   │
-                           │                 │                   └──────────────┘
-                           ▼                 ▼
-                    ┌──────────────┐  ┌──────────────┐
-                    │ Qloo API     │  │ Vertex AI +  │
-                    │ (taste graph)│  │ Search       │
-                    └──────────────┘  │ Grounding    │
-                                     └──────────────┘
-```
+</div>
 
 ---
 
-## What the agent can do (key features)
+## The problem
 
-| Feature | What it does |
-|---|---|
-| **Seed builder** | Brand input, composite vibe seed, city, mode, radius, category tags, SKUs. Ambiguous cities ask for a point; a seed is confirmed against resolved entity ids before `POST /api/v1/scout`. |
-| **Live trace** | Server-Sent Events stages as the pipeline runs across `service-taste` → `server` → `service-ai`, with a polling fallback when the stream drops. |
-| **Map** | Google Maps basemap (`google_maps_flutter`) with door pins, skip pins, and locality polygons from the same Qloo payload the board shows. Falls back to CARTO tiles without a Maps key. |
-| **Door board** | Ranked doors with the gateway's reason codes and reason detail, plus an LLM-only baseline for comparison. The evidence drawer opens every score's inputs and cites the Qloo calls behind them. |
-| **Pitch** | Shopkeeper script, displacement battlecard, recommended SKU, mode-specific paragraph, run-sheet and site-brief actions. |
-| **Provenance everywhere** | Each number carries a source badge (Qloo fact, Google fact, model inference, ungrounded LLM). The client renders the gateway's rank and reasons as-is — no client-side re-sorting, no re-derived scores. |
+Emerging brands guess where to sell. A field rep walks into ten stores a day, and half of them have customers who will never buy the product. The brand burns time and money, and the store misses a product its customers would have loved.
 
-It also carries the brand foundation (`lib/src/theme/brand_tokens.dart`, `app_theme.dart`), the judge sign-in flow, and the documented keyboard path and contrast table in [`ACCESSIBILITY.md`](ACCESSIBILITY.md).
+The data to fix this already exists. Qloo's Taste Graph can answer *"where do the people who love this brand actually go?"* — not just *"what's popular on Yelp?"* Karum turns that answer into a day's work for a sales team.
 
----
+## What Karum does
 
-## What makes it Qloo-powered
+You give Karum a brand — or a mix of reference brands, music genres, and lifestyle tags that describe your customers — and a target city. Karum then:
 
-Qloo is the taste graph — **Karum cannot work without it**. Remove Qloo and the product collapses into a generic LLM answer like "open a café or a plant shop."
+- **Finds the right stores to pitch.** Ranks independent bars, cafes, and shops whose customers share your brand's tastes.
+- **Finds where to open.** Points to the blocks and neighborhoods where your target customers are concentrated, for a flagship store or a weekend pop-up.
+- **Finds partners.** Suggests non-competing shops — bookstores, galleries, studios — whose customers match yours, for joint events.
+- **Checks what's on the shelf right now.** Reads each store's live menu or shelf for competing and complementary products.
+- **Tells you where *not* to go.** A "Doors to Skip" list flags popular stores that don't fit your brand or already carry too many competitors.
+- **Writes the pitch.** A tailored script for each shopkeeper, the product most likely to sell there, and a battlecard against the competitor already on the shelf.
+- **Plans the route.** The best driving order to visit every qualified store in a day.
+- **Hands you the paperwork.** A field run-sheet or a site-selection brief, ready to export as a PDF.
 
-The Flutter client never calls Qloo directly. The `X-Api-Key` stays server-side inside `service-taste`, and all 10,000 hackathon requests/month are cached by parameter hash in Redis so prewarmed and repeated runs never exhaust the quota.
+Every piece of information is labeled with where it came from. If Karum can't find an answer, it says so instead of guessing.
 
-### What Qloo enables that an LLM or web search cannot
+## Try it yourself
 
-- **Cross-domain Brand/Seed → Places** — ranked venues whose patrons share behavioral affinity with the brand, scoped to a city point and radius.
-- **`urn:tag` lifestyle descriptors** — readable cultural tags ("craft cocktails", "indie rock", "sustainable design") that define each venue's crowd.
-- **`urn:heatmap` spatial cells** — affinity intensity per block for flagship and pop-up site scouting.
-- **`urn:demographics` audience skew** — age/gender alignment per venue, mapped onto the brand's target cohort.
-- **`/v2/analysis/compare` overlap** — quantifies why the emerging brand fits a venue better than the incumbent competitor detected on its menu.
-- **`feature.explainability=true` evidence** — every recommendation decomposes into named contributing entities (per-result `signal.interests.entities` weights), shown in the "How We Know" evidence drawer — not inferred by the model.
+**[karum-512016.web.app](https://karum-512016.web.app)** — no login. Open one of the one-click examples and watch a full run in about a second:
 
-### Transparent door scoring
+- **Sola** — a yuzu-mezcal aperitif scouting bars in **Austin**
+- **Brooklyn** — a flagship-location scout and a brand-collaboration scout
+- **Mumbai** — a cacao & coffee brand scouting doors in **Colaba**
 
-Every door score is a composite of three 0–1 sub-scores, displayed as 0–100:
+## How it works, in four steps
 
-> **S<sub>door</sub> = 0.50 · A<sub>taste</sub> + 0.30 · O<sub>shelf</sub> + 0.20 · D<sub>demo</sub>**
+1. **Describe the brand.** Pick a brand or build a cultural "vibe" from a few reference tags, then choose a city and a goal (pitch stores, open a location, or find partners).
+2. **Read the city's taste.** Qloo ranks every candidate venue by how closely its customers match your brand, and highlights the neighborhoods where they cluster.
+3. **Check the ground truth.** Google's AI reads each venue's live menu for competitors, Google Maps fills in addresses and the best route, and each store gets a single clear score.
+4. **Walk in ready.** You get the ranked list, the stores to skip, a pitch and battlecard for each door, and a route for the day.
 
-| Sub-score | Meaning | Source |
-|---|---|---|
-| **A<sub>taste</sub>** | Cultural affinity fit between the brand seed and the venue | Qloo affinity, percentile within the shortlist |
-| **O<sub>shelf</sub>** | Shelf / menu opportunity | Vertex AI Search Grounding live-menu audit |
-| **D<sub>demo</sub>** | Demographic / locality alignment | Venue age buckets + neighborhood heatmap intensity |
+## Why Qloo is essential
 
-A **skip gate** (outside the composite) pushes low-affinity or oversaturated venues into **"Doors to Skip"** — negative space that proves the agent says no as often as it says yes.
+Without Qloo, a regular AI just lists the most famous bars from travel blogs — with no idea whether their customers actually fit your brand. Qloo is what lets Karum tell a trendy-but-wrong store from a quietly perfect one.
 
----
+Karum uses Qloo to understand each venue's crowd, to map where a brand's customers live across a city, to describe the culture of a neighborhood in plain tags, and to explain *why* each recommendation was made — so every suggestion traces back to real cultural data, not a guess.
 
-## Run path
+## How the store score works
 
-Requires the **Flutter SDK** (see the version pin in [`karum-infra`](https://github.com/karum-labs/karum-infra)).
+Every store gets one score from 0 to 100, combining three things:
 
-The gateway base URL is supplied with `--dart-define`. On the laptop, start the stack from `karum-infra` with `make local`. That opens this app against the local gateway. To start the client on its own once the gateway is already up:
+> **Store score = 50% × Taste fit + 30% × Shelf opportunity + 20% × Demographic fit**
 
-```bash
-flutter run -d chrome --dart-define=GATEWAY_URL=http://127.0.0.1:8080
-```
+- **Taste fit** — how well the store's customers match your brand
+- **Shelf opportunity** — how much room there is on the menu or shelf for your product
+- **Demographic fit** — how well the store's customer age groups match your target customers
 
-If `GATEWAY_URL` is omitted, the app defaults to `http://localhost:8080`.
+If the live menu can't be checked, that part is marked unknown and the score is recalculated from the rest. Stores that score too low, or that already carry four or more direct competitors, move to the skip list with a reason attached.
 
-Share links point at the running web app, not at the gateway's JSON API. Web builds use the browser origin and the hash route automatically; a desktop build has no browser origin, so set `--dart-define=PUBLIC_APP_URL=https://karum-512016.web.app` to produce a shareable link.
+## Honest by design
 
-The login screen's hackathon banner follows `SHOW_JUDGES_BANNER`. It is on in debug and profile, and off in a release build, unless you pass `--dart-define=SHOW_JUDGES_BANNER=true` or `false`. The banner's **Open demo** button needs the gateway running with `HACKATHON_MODE=true`.
+Trust is the whole point of a tool that tells a brand where to spend its money, so honesty is built into Karum:
 
-**Previewing `build/web` without the stack:** the landing screen fetches `GET /health` on load, so served from a plain static file server there is no gateway behind it and `/health` answers 404 — the screen shows its gateway-unavailable state, which is expected rather than a bug. To preview the happy path, run `make local` in `karum-infra`, or serve `build/web` from something that answers `/health` with the mode you want to see.
+- **Every number cites its source** — Qloo fact, Google fact, AI inference, or your own input.
+- **A missing answer is shown as missing,** never invented.
+- **See the evidence.** An evidence drawer opens the exact signals behind any recommendation.
+- **Compare against a plain AI.** A side-by-side view shows how a regular AI without Qloo gives generic tourist picks while Karum finds real customer fit.
+- **It still works when parts fail.** If the menu check or the AI is unavailable, the store list still appears, clearly marked, rather than showing nothing.
 
----
+## Built with
 
-## What else to add before the hackathon submission
+**Qloo Taste Graph** for cultural and demographic insight · **Google Vertex AI (Gemini) with Google Search** for live menu checks and pitch writing · **Google Maps** for locations and routing. The platform is open source under the MIT License, built by two people across a connected set of services.
 
-- [ ] Paste the real public karum-client URL (Firebase Hosting / Devpost demo link) in place of the TODO placeholder in the **Product** section.
-- [ ] Devpost submission mapped to the four judging criteria — submit by Oct 29, 24 hours ahead of the Oct 30, 2026 11:45pm EDT deadline.
-- [ ] Keep the public build no-login with 1-click presets (Austin "Sola Yuzu Mezcal" wholesale, Brooklyn flagship + collab, Mumbai Colaba cacao/coffee) prewarmed so judges see a live run in under ~1s.
-- [ ] Optional but recommended: a short demo video walking the 3-minute script — seed → live trace → door card + evidence drawer → "Doors to Skip" → LLM-only baseline toggle → pitch & run-sheet → Brooklyn heatmap.
-- [ ] Verify the MIT licence is visible in the GitHub About section of all five repos (open-source requirement).
-- [ ] Confirm Cloud Run services and the prewarmed cache stay live through the judging window (Nov 2–16) and to Nov 23.
-- [ ] Latency check: < 8s for a live run, < 1s for stored presets.
-
----
-
-## Development
-
-```bash
-flutter analyze   # static analysis (flutter_lints)
-flutter test      # widget tests
-flutter pub get   # fetch dependencies
-```
-
-## Ownership
-
-Karum is a two-person build (record: [`DECISIONS.md`](https://github.com/karum-labs/karum-infra/blob/main/DECISIONS.md)). **Side A** owns taste, score, agent, and eval; **side B** owns UI, map, drafts, deploy, and Devpost. This repo is **side B** — UI, map, and the deliverable actions. It renders the server's rank and reason codes as-is: no client-side re-sorting, no re-derived scores.
+This repository is the **Karum web app** — the screens judges and users see. The rest of the platform lives in [`karum-infra`](https://github.com/karum-labs/karum-infra), which also carries the setup and run instructions for developers.
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).
 
 ---
 
 <p align="center">
-  Built for the <b>Qloo Agentic Hackathon 2026</b> · <a href="https://karum-512016.web.app">Live demo</a> · <b>MIT Licence</b>
+  Built for the <b>Qloo Agentic Hackathon 2026</b> · <a href="https://karum-512016.web.app">Live demo</a> · <a href="https://vimeo.com/1241448615">Demo video</a>
 </p>
