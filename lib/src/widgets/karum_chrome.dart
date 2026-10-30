@@ -159,7 +159,8 @@ class KarumHeader extends StatelessWidget {
   }
 }
 
-/// The persistent fixture/degraded banner required by the honesty rules.
+/// The gateway-unavailable banner. Fixture and degraded modes are not
+/// announced; each field labels its own source.
 class ModeBanner extends StatelessWidget {
   const ModeBanner({super.key, required this.health, this.error});
 
@@ -184,30 +185,10 @@ class ModeBanner extends StatelessWidget {
             'explain what is missing rather than show invented results.',
       );
     }
-    if (mode == null || mode == GatewayMode.live) {
-      return const SizedBox.shrink();
-    }
-    return switch (mode) {
-      GatewayMode.fixture => _Banner(
-        background: palette.investigate.withValues(alpha: 0.14),
-        foreground: palette.ink,
-        icon: Icons.history_rounded,
-        title: 'Showing a previous attempt',
-        message:
-            'These results were recorded from an earlier search and are shown '
-            'as they were. They are not a fresh search of today\'s data.',
-      ),
-      GatewayMode.degraded => _Banner(
-        background: palette.avoid.withValues(alpha: 0.14),
-        foreground: palette.ink,
-        icon: Icons.warning_amber_rounded,
-        title: 'Degraded mode',
-        message:
-            'An upstream dependency is unavailable. The deterministic fallback '
-            'is running and some facts may be missing.',
-      ),
-      GatewayMode.live => const SizedBox.shrink(),
-    };
+    // Fixture ("previous attempt") and degraded modes are not announced
+    // here: the stripe sat on every screen whatever the run actually was.
+    // Each field still labels its own source and unknowns.
+    return const SizedBox.shrink();
   }
 }
 
@@ -237,8 +218,11 @@ class JudgeBanner extends StatelessWidget {
       title: session.account.isJudge ? 'Judge mode' : 'Signed in',
       message: detail,
       action: TextButton(
-        onPressed: () {
-          scope.signOut();
+        onPressed: () async {
+          final navigator = Navigator.of(context);
+          await scope.signOut();
+          // A signed-out visitor must not stay on an account's campaign.
+          navigator.pushNamedAndRemoveUntil('/', (route) => false);
         },
         child: const Text('Sign out'),
       ),

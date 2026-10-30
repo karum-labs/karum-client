@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api/gateway_client.dart';
+import '../api/scout_request.dart';
 import '../api/scout_models.dart';
 import '../app/app_scope.dart';
 import '../theme/brand_tokens.dart';
 import '../util/file_saver.dart';
+import '../util/preset_runs.dart';
 import '../util/share.dart';
 import '../widgets/async_states.dart';
 import '../widgets/coach_overlay.dart';
@@ -52,6 +54,7 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
   bool _sseDropped = false;
   bool _polling = false;
   bool _canceling = false;
+  bool _rerunning = false;
   bool _downloading = false;
   String? _regeneratingDoorId;
   String? _selectedDoorId;
@@ -330,6 +333,27 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
     }
   }
 
+  /// Starts a fresh run of this preset. Opening a preset reopens its stored
+  /// run, so this is the only path that re-runs the pipeline.
+  Future<void> _runAgain() async {
+    final presetId = _campaign?.presetId ?? '';
+    if (presetId.isEmpty || _rerunning) return;
+    final anonymous = AppScope.maybeOf(context)?.session == null;
+    setState(() => _rerunning = true);
+    try {
+      final job = await _client.createScout(
+        ScoutRequest.preset(presetId, rerun: true),
+      );
+      if (anonymous) writePresetRun(presetId, job.jobId);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/scout/${job.jobId}');
+    } on GatewayException catch (error) {
+      if (!mounted) return;
+      setState(() => _rerunning = false);
+      _snack(error.message);
+    }
+  }
+
   Future<void> _download() async {
     final campaign = _campaign;
     final id = _effectiveJobId;
@@ -517,17 +541,9 @@ class _ScoutWorkspaceScreenState extends State<ScoutWorkspaceScreen> {
             elapsedLabel: _elapsedLabel,
             canceling: _canceling,
             onCancel: _cancel,
+            rerunning: _rerunning,
+            onRunAgain: _runAgain,
           ),
-          if (campaign?.state == JobState.degraded)
-            NoticeBanner(
-              title: 'Degraded run',
-              message: campaign!.errorMessage.isNotEmpty
-                  ? campaign.errorMessage
-                  : 'An upstream dependency was unavailable. Some facts are '
-                        'missing and the affected fields are labelled.',
-              tone: NoticeTone.warning,
-              icon: Icons.warning_amber_rounded,
-            ),
           if (campaign?.state == JobState.failed)
             NoticeBanner(
               title: 'Run failed',
@@ -754,6 +770,8 @@ class _CampaignBar extends StatelessWidget {
     required this.elapsedLabel,
     required this.canceling,
     required this.onCancel,
+    required this.rerunning,
+    required this.onRunAgain,
   });
 
   final Campaign? campaign;
@@ -761,6 +779,8 @@ class _CampaignBar extends StatelessWidget {
   final String elapsedLabel;
   final bool canceling;
   final VoidCallback onCancel;
+  final bool rerunning;
+  final VoidCallback onRunAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -829,6 +849,24 @@ class _CampaignBar extends StatelessWidget {
                 onPressed: canceling ? null : onCancel,
                 icon: const Icon(Icons.stop_circle_outlined, size: 17),
                 label: Text(canceling ? 'Canceling…' : 'Cancel run'),
+              ),
+            ],
+            if (!running && campaign?.presetId.isNotEmpty == true) ...[
+              const SizedBox(width: KarumSpacing.lg),
+              FocusRing(
+                borderRadius: BorderRadius.circular(KarumRadius.control),
+                child: OutlinedButton.icon(
+                  key: const Key('workspace-run-again'),
+                  onPressed: rerunning ? null : onRunAgain,
+                  icon: rerunning
+                      ? const SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.replay_rounded, size: 17),
+                  label: Text(rerunning ? 'Starting…' : 'Run again'),
+                ),
               ),
             ],
             if (campaign != null && campaign!.pointAttribution.isNotEmpty)

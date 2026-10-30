@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../api/auth_models.dart';
+import '../api/brand_profile.dart';
+import '../api/gateway_client.dart';
+import '../api/scout_models.dart';
 import '../app/app_scope.dart';
 import '../data/presets.dart';
 import '../theme/brand_tokens.dart';
@@ -116,6 +119,17 @@ class _AccountPane extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: KarumSpacing.xl2),
+        const SectionLabel('Your brand'),
+        const SizedBox(height: KarumSpacing.sm),
+        Text(
+          'Every door pitch is written for this brand: what it is, why it wins, '
+          'and who buys it.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: palette.mute),
+        ),
+        const SizedBox(height: KarumSpacing.lg),
+        const _BrandProfileCard(),
         const SizedBox(height: KarumSpacing.xl2),
         const SectionLabel('Your campaigns'),
         const SizedBox(height: KarumSpacing.sm),
@@ -340,6 +354,331 @@ class _SignedOutPane extends StatelessWidget {
                 child: const Text('Browse the public demo'),
               ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The account's brand profile: a summary with an Edit button that swaps in
+/// the form.
+class _BrandProfileCard extends StatefulWidget {
+  const _BrandProfileCard();
+
+  @override
+  State<_BrandProfileCard> createState() => _BrandProfileCardState();
+}
+
+class _BrandProfileCardState extends State<_BrandProfileCard> {
+  BrandProfile? _profile;
+  String? _error;
+  bool _loading = true;
+  bool _editing = false;
+  bool _saving = false;
+  bool _initialised = false;
+
+  final _name = TextEditingController();
+  final _category = TextEditingController();
+  final _description = TextEditingController();
+  final _positioning = TextEditingController();
+  final _audience = TextEditingController();
+  final _products = TextEditingController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialised) {
+      _initialised = true;
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in [
+      _name,
+      _category,
+      _description,
+      _positioning,
+      _audience,
+      _products,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  GatewayClient? get _client => AppScope.maybeOf(context)?.client;
+
+  Future<void> _load() async {
+    final client = _client;
+    if (client == null) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final profile = await client.fetchBrandProfile();
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _loading = false;
+        // An account with no brand yet goes straight to the form.
+        _editing = !profile.saved;
+      });
+      _fill(profile);
+    } on GatewayException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error.message;
+      });
+    }
+  }
+
+  void _fill(BrandProfile profile) {
+    _name.text = profile.name;
+    _category.text = profile.category;
+    _description.text = profile.description;
+    _positioning.text = profile.positioning;
+    _audience.text = profile.audience;
+    _products.text = profile.skus.map((sku) => sku.name).join('\n');
+  }
+
+  Future<void> _save() async {
+    final client = _client;
+    if (client == null || _saving) return;
+    if (_name.text.trim().isEmpty) {
+      setState(() => _error = 'Give the brand a name.');
+      return;
+    }
+    final existing = {
+      for (final sku in _profile?.skus ?? const <Sku>[]) sku.name: sku.id,
+    };
+    final products = _products.text
+        .split(RegExp(r'[\n,]'))
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .map((name) => Sku(id: existing[name] ?? '', name: name))
+        .toList(growable: false);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final saved = await client.saveBrandProfile(
+        BrandProfile(
+          name: _name.text.trim(),
+          category: _category.text.trim(),
+          description: _description.text.trim(),
+          positioning: _positioning.text.trim(),
+          audience: _audience.text.trim(),
+          skus: products,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _profile = saved;
+        _saving = false;
+        _editing = false;
+      });
+      _fill(saved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Brand saved. New pitches use it.')),
+      );
+    } on GatewayException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = error.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(KarumSpacing.xl),
+        child: _loading
+            ? const LoadingState(label: 'Loading your brand…')
+            : _editing
+            ? _form(context)
+            : _summary(context),
+      ),
+    );
+  }
+
+  Widget _summary(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final profile = _profile ?? const BrandProfile();
+    Widget row(String label, String value) {
+      if (value.trim().isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(top: KarumSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: palette.mute),
+            ),
+            const SizedBox(height: 2),
+            Text(value, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.local_drink_outlined, color: palette.brand),
+            const SizedBox(width: KarumSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (profile.category.isNotEmpty)
+                    Text(
+                      profile.category,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.mute),
+                    ),
+                ],
+              ),
+            ),
+            FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: OutlinedButton.icon(
+                key: const Key('brand-edit'),
+                onPressed: () => setState(() => _editing = true),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit brand'),
+              ),
+            ),
+          ],
+        ),
+        row('About the brand', profile.description),
+        row('Why it wins', profile.positioning),
+        row('Who buys it', profile.audience),
+        if (profile.skus.isNotEmpty) ...[
+          const SizedBox(height: KarumSpacing.md),
+          Wrap(
+            spacing: KarumSpacing.sm,
+            runSpacing: KarumSpacing.sm,
+            children: [
+              for (final sku in profile.skus) TagPill(label: sku.name),
+            ],
+          ),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: KarumSpacing.md),
+          Text(_error!, style: TextStyle(color: palette.avoid)),
+        ],
+      ],
+    );
+  }
+
+  Widget _form(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    Widget field(
+      TextEditingController controller,
+      String label,
+      String hint, {
+      int maxLines = 1,
+      int maxLength = 600,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: KarumSpacing.md),
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          minLines: 1,
+          maxLength: maxLength,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        field(_name, 'Brand name', 'e.g. Bloom Soda Co.', maxLength: 120),
+        field(_category, 'What kind of brand', 'e.g. Craft soft drinks'),
+        field(
+          _description,
+          'About the brand',
+          'What you make and how venues serve it',
+          maxLines: 3,
+        ),
+        field(
+          _positioning,
+          'Why it wins',
+          'What sets you apart, and what a venue gains by stocking you',
+          maxLines: 3,
+        ),
+        field(
+          _audience,
+          'Who buys it',
+          'The guests and venues the brand is for',
+          maxLines: 2,
+        ),
+        field(
+          _products,
+          'Products',
+          'One per line',
+          maxLines: 5,
+          maxLength: 1600,
+        ),
+        if (_error != null) ...[
+          Text(_error!, style: TextStyle(color: palette.avoid)),
+          const SizedBox(height: KarumSpacing.md),
+        ],
+        Row(
+          children: [
+            FocusRing(
+              borderRadius: BorderRadius.circular(KarumRadius.control),
+              child: FilledButton.icon(
+                key: const Key('brand-save'),
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check_rounded, size: 18),
+                label: Text(_saving ? 'Saving…' : 'Save brand'),
+              ),
+            ),
+            if (_profile?.saved == true) ...[
+              const SizedBox(width: KarumSpacing.sm),
+              TextButton(
+                onPressed: _saving
+                    ? null
+                    : () {
+                        _fill(_profile!);
+                        setState(() {
+                          _editing = false;
+                          _error = null;
+                        });
+                      },
+                child: const Text('Cancel'),
+              ),
+            ],
           ],
         ),
       ],

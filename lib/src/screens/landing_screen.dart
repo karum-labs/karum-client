@@ -10,6 +10,7 @@ import '../app/coach_gate.dart';
 import '../app/routes.dart';
 import '../data/presets.dart';
 import '../theme/brand_tokens.dart';
+import '../util/preset_runs.dart';
 import '../widgets/async_states.dart';
 import '../widgets/common.dart';
 import '../widgets/focus_ring.dart';
@@ -171,10 +172,29 @@ class _LandingScreenState extends State<LandingScreen> {
       _candidates = const [];
     });
     try {
+      // Reopening a preset shows the stored run; only the workspace's
+      // "Run again" starts a fresh one. Signed-in callers get their own run
+      // back from the gateway; an anonymous visitor's run is remembered here.
+      final anonymous = AppScope.maybeOf(context)?.session == null;
+      final remembered = anonymous ? readPresetRun(preset.id) : null;
+      if (remembered != null) {
+        try {
+          final previous = await _client.fetchScout(remembered);
+          if (!mounted) return;
+          if (previous.state != JobState.failed) {
+            _openJob(previous, coach: true);
+            return;
+          }
+        } on GatewayException {
+          // The run is gone (a reset store); fall through to a new one.
+        }
+        writePresetRun(preset.id, null);
+      }
       final job = await _client.createScout(
         ScoutRequest.preset(preset.id),
         idempotencyKey: _newKey(),
       );
+      if (anonymous) writePresetRun(preset.id, job.jobId);
       if (!mounted) return;
       _openJob(job, coach: true);
     } on GatewayException catch (error) {

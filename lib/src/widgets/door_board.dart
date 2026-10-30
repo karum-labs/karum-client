@@ -432,6 +432,7 @@ class _DoorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
     final pitch = door.pitch;
+    final hasPitch = pitch != null && !pitch.isEmpty;
     final menu = door.menu;
     final enrichment = door.enrichment;
     final place = door.place;
@@ -456,8 +457,11 @@ class _DoorCard extends StatelessWidget {
         ? enrichmentHours
         : (place?.hours ?? '');
     final hoursFromQloo = enrichmentHours.isEmpty && hours.isNotEmpty;
-    final phone = enrichment?.phone.isNotEmpty == true ? enrichment!.phone : (place?.phone ?? '');
-    final phoneFromQloo = enrichment?.phone.isEmpty == true && place?.phone.isNotEmpty == true;
+    final phone = enrichment?.phone.isNotEmpty == true
+        ? enrichment!.phone
+        : (place?.phone ?? '');
+    final phoneFromQloo =
+        enrichment?.phone.isEmpty == true && place?.phone.isNotEmpty == true;
     final card = Card(
       child: Padding(
         padding: const EdgeInsets.all(KarumSpacing.lg),
@@ -621,7 +625,8 @@ class _DoorCard extends StatelessWidget {
                       Expanded(
                         child: FactRow(icon: Icons.phone_rounded, text: phone),
                       ),
-                      if (phoneFromQloo) const SourceBadge(source: 'google_fact')
+                      if (phoneFromQloo)
+                        const SourceBadge(source: 'google_fact'),
                     ],
                   ),
                 ),
@@ -737,50 +742,15 @@ class _DoorCard extends StatelessWidget {
                     ?.copyWith(color: palette.brand),
               ),
             ],
-            if (pitch != null) ...[
-              const SizedBox(height: KarumSpacing.md),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(KarumSpacing.md),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(KarumRadius.control),
-                  border: Border.all(color: palette.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Pitch',
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(color: palette.ink),
-                          ),
-                        ),
-                        if (pitch.template)
-                          TagPill(label: 'Template draft', selected: false),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      pitch.script,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: palette.mute),
-                    ),
-                    if (pitch.sku != null && pitch.sku!.name.isNotEmpty) ...[
-                      const SizedBox(height: KarumSpacing.sm),
-                      TagPill(
-                        label: 'SKU · ${pitch.sku!.name}',
-                        selected: true,
-                      ),
-                    ],
-                  ],
-                ),
+            const SizedBox(height: KarumSpacing.md),
+            if (hasPitch)
+              _PitchPreview(pitch: pitch)
+            else
+              Text(
+                'No pitch yet. Generate one when you are ready to call this door.',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: palette.mute),
               ),
-            ],
             const SizedBox(height: KarumSpacing.lg),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -791,17 +761,57 @@ class _DoorCard extends StatelessWidget {
                     runSpacing: KarumSpacing.sm,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      if (onOpenPitch != null)
+                      if (!hasPitch && onRegenerate != null)
                         FocusRing(
                           borderRadius: BorderRadius.circular(
                             KarumRadius.control,
                           ),
                           child: FilledButton.icon(
-                            key: const Key('door-pitch'),
-                            onPressed: () => onOpenPitch!(door),
-                            icon: const Icon(Icons.campaign_outlined, size: 18),
-                            label: const Text('Pitch & route'),
+                            key: const Key('door-generate-pitch'),
+                            onPressed: regenerating
+                                ? null
+                                : () => onRegenerate!(door),
+                            icon: regenerating
+                                ? const SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.auto_awesome_outlined,
+                                    size: 18,
+                                  ),
+                            label: Text(
+                              regenerating ? 'Generating…' : 'Generate pitch',
+                            ),
                           ),
+                        ),
+                      if (onOpenPitch != null)
+                        FocusRing(
+                          borderRadius: BorderRadius.circular(
+                            KarumRadius.control,
+                          ),
+                          child: hasPitch
+                              ? FilledButton.icon(
+                                  key: const Key('door-pitch'),
+                                  onPressed: () => onOpenPitch!(door),
+                                  icon: const Icon(
+                                    Icons.campaign_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Pitch & route'),
+                                )
+                              : OutlinedButton.icon(
+                                  key: const Key('door-pitch'),
+                                  onPressed: () => onOpenPitch!(door),
+                                  icon: const Icon(
+                                    Icons.campaign_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Pitch & route'),
+                                ),
                         ),
                       FocusRing(
                         borderRadius: BorderRadius.circular(
@@ -820,7 +830,7 @@ class _DoorCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onRegenerate != null)
+                if (onRegenerate != null && hasPitch)
                   FocusRing(
                     borderRadius: BorderRadius.circular(KarumRadius.control),
                     child: NamedIconButton(
@@ -871,6 +881,45 @@ class _DoorCard extends StatelessWidget {
 
 /// A board-local lookup so the evidence button can pass the campaign without
 /// drilling it through every card constructor.
+/// The tile's pitch teaser: an accent rule and the opening line, so the tile
+/// reads as a quote instead of a second bordered card.
+class _PitchPreview extends StatelessWidget {
+  const _PitchPreview({required this.pitch});
+
+  final Pitch pitch;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = KarumPalette.of(context);
+    final text = pitch.opening.trim().isNotEmpty
+        ? pitch.opening.trim()
+        : pitch.script.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: KarumSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: palette.line, width: 2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: palette.ink, height: 1.45),
+          ),
+          if (pitch.sku != null && pitch.sku!.name.isNotEmpty) ...[
+            const SizedBox(height: KarumSpacing.sm),
+            TagPill(label: 'SKU · ${pitch.sku!.name}', selected: true),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CampaignLookup extends InheritedWidget {
   const _CampaignLookup({required this.campaign, required super.child});
 

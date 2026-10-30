@@ -81,4 +81,44 @@ void main() {
 
     expect(find.text('Partial composite'), findsOneWidget);
   });
+
+  testWidgets('a door with no pitch offers to generate one', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const campaign = Campaign(
+      jobId: 'run-nopitch',
+      state: JobState.ready,
+      mode: ScoutMode.wholesale,
+      city: 'Austin',
+      point: GeoPoint(30.2672, -97.7431),
+      brand: BrandContext(name: 'Sola'),
+      doors: [
+        Door(
+          id: 'd-1',
+          name: 'Here Nor There',
+          rank: 1,
+          scores: ScoreSet(composite: ScoreTerm(display: 72)),
+        ),
+      ],
+    );
+    Door? requested;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: DoorBoard(
+            campaign: campaign,
+            onRegenerate: (door) => requested = door,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('No pitch yet'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('door-generate-pitch')));
+    expect(requested?.id, 'd-1');
+  });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../theme/brand_tokens.dart';
 import 'focus_ring.dart';
@@ -179,7 +180,8 @@ Future<void> showGlossarySheet(BuildContext context) {
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,
-    builder: (sheetContext) => const _GlossarySheet(),
+    builder: (sheetContext) =>
+        PointerInterceptor(child: const _GlossarySheet()),
   );
 }
 

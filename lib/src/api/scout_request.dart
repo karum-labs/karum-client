@@ -40,6 +40,7 @@ class ScoutRequest {
     this.fallbackQueries = const [],
     this.categoryTags = const [],
     this.point,
+    this.rerun = false,
   });
 
   /// The locked preset id. When set, the gateway uses its stored point, seed,
@@ -68,9 +69,12 @@ class ScoutRequest {
   /// A candidate point selected after an ambiguous city response.
   final GeoPoint? point;
 
+  /// True to start a fresh run of a preset instead of reopening the stored one.
+  final bool rerun;
+
   /// Builds a request for a locked preset.
-  factory ScoutRequest.preset(String presetId) =>
-      ScoutRequest(presetId: presetId, mode: ScoutMode.wholesale);
+  factory ScoutRequest.preset(String presetId, {bool rerun = false}) =>
+      ScoutRequest(presetId: presetId, mode: ScoutMode.wholesale, rerun: rerun);
 
   /// Builds a free-entry request.
   factory ScoutRequest.freeEntry({
@@ -113,6 +117,7 @@ class ScoutRequest {
     fallbackQueries: fallbackQueries,
     categoryTags: categoryTags,
     point: point ?? this.point,
+    rerun: rerun,
   );
 
   /// Serializes the gateway body. Empty optional fields are omitted so the
@@ -121,6 +126,7 @@ class ScoutRequest {
     return {
       if (presetId != null && presetId!.isNotEmpty) 'preset_id': presetId,
       if (freeEntry) 'free_entry': true,
+      if (rerun) 'rerun': true,
       if (city.trim().isNotEmpty) 'city': city.trim(),
       'mode': mode.name,
       if (radiusMeters > 0) 'radius_meters': radiusMeters,

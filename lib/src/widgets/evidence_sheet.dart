@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../api/scout_models.dart';
 import '../theme/brand_tokens.dart';
@@ -15,7 +16,12 @@ Future<void> showEvidenceSheet(
   return showDialog<void>(
     context: context,
     barrierDismissible: true,
-    builder: (context) => _EvidenceDialog(campaign: campaign, door: door),
+    // The Google map is a DOM element under Flutter's canvas, so wheel and
+    // touch events over a dialog reach it and zoom the map. The interceptor
+    // fills the screen (the Dialog expands to it) and swallows them.
+    builder: (context) => PointerInterceptor(
+      child: _EvidenceDialog(campaign: campaign, door: door),
+    ),
   );
 }
 

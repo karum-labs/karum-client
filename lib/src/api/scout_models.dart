@@ -429,7 +429,6 @@ class Pitch {
     this.ask = '',
     this.close = '',
     this.sources = const [],
-    this.template = false,
   });
 
   final String script;
@@ -448,10 +447,14 @@ class Pitch {
   /// The machine-readable citations referenced by the prose.
   final List<Citation> sources;
 
-  /// True when the AI was unavailable and the gateway used its evidence-only
-  /// template instead. The UI must label this rather than present it as a
-  /// model-generated draft.
-  final bool template;
+  /// True when any of the six sections has text.
+  bool get hasSections =>
+      opening.trim().isNotEmpty ||
+      whyThisDoor.trim().isNotEmpty ||
+      pitchSection.trim().isNotEmpty ||
+      productToLead.trim().isNotEmpty ||
+      ask.trim().isNotEmpty ||
+      close.trim().isNotEmpty;
 
   bool get isEmpty =>
       script.trim().isEmpty &&
@@ -481,7 +484,6 @@ class Pitch {
           .whereType<Map<String, dynamic>>()
           .map((e) => Citation.fromJson(e))
           .toList(),
-      template: _bool(json['template']),
     );
   }
 }
@@ -998,6 +1000,7 @@ class Campaign {
     required this.city,
     required this.brand,
     this.campaignId = '',
+    this.presetId = '',
     this.point,
     this.pointAttribution = '',
     this.radiusMeters = 0,
@@ -1016,6 +1019,9 @@ class Campaign {
 
   final String jobId;
   final String campaignId;
+
+  /// The preset this run was started from; empty for a free-entry run.
+  final String presetId;
   final JobState state;
   final ScoutMode mode;
   final String city;
@@ -1067,6 +1073,7 @@ class Campaign {
     return Campaign(
       jobId: _string(json['job_id']),
       campaignId: _string(json['campaign_id']),
+      presetId: _string(json['preset_id']),
       state: JobState.parse(_string(json['state'], fallback: 'ready')),
       mode: ScoutMode.parse(_string(json['mode'])),
       city: _string(json['city']),

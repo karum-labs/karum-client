@@ -44,7 +44,7 @@ Map<String, dynamic> campaignJson() => {
         'lat': 30.2672,
         'lng': -97.7431,
       },
-      'pitch': {'script': "Whisler's ranks first of 25.", 'template': true},
+      'pitch': {'script': "Whisler's ranks first of 25."},
       'menu': {
         'summary': 'Two mezcal competitors on the list.',
         'shelf_unknown': true,

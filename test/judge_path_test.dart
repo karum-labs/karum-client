@@ -44,7 +44,7 @@ void main() {
     expect(gateway.scoutPosts.single.headers['Idempotency-Key'], isNotEmpty);
 
     // The workspace shows the previous-attempt banner and the ranked door.
-    expect(find.textContaining('Showing a previous attempt'), findsOneWidget);
+    expect(find.textContaining('Showing a previous attempt'), findsNothing);
     expect(find.text('Ready'), findsWidgets);
     expect(find.text("Whisler's"), findsWidgets);
     expect(find.textContaining('Whisler'), findsWidgets);

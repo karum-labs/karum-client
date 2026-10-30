@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../data/presets.dart';
 import 'auth_models.dart';
+import 'brand_profile.dart';
 import 'health_status.dart';
 import 'scout_models.dart';
 import 'scout_request.dart';
@@ -191,6 +192,42 @@ class GatewayClient {
     return session;
   }
 
+  /// Reads the signed-in account's brand profile. An account with no saved
+  /// profile gets an empty one with [BrandProfile.saved] false.
+  Future<BrandProfile> fetchBrandProfile() async {
+    final response = await _get(
+      '/api/v1/account/brand',
+      timeout: const Duration(seconds: 15),
+    );
+    return _brandFrom(_decodeObject(response));
+  }
+
+  /// Saves the signed-in account's brand profile.
+  Future<BrandProfile> saveBrandProfile(BrandProfile profile) async {
+    final response = await _send(
+      'PUT',
+      '/api/v1/account/brand',
+      body: profile.toJson(),
+      timeout: const Duration(seconds: 15),
+    );
+    return _brandFrom(_decodeObject(response));
+  }
+
+  BrandProfile _brandFrom(Map<String, dynamic> decoded) {
+    final raw = decoded['brand'];
+    if (raw is! Map) {
+      throw const GatewayException(
+        'the gateway did not return a brand profile',
+        statusCode: 200,
+        code: 'invalid_payload',
+      );
+    }
+    return BrandProfile.fromJson(
+      raw.map((key, value) => MapEntry(key.toString(), value)),
+      saved: decoded['saved'] == true,
+    );
+  }
+
   /// Resolves the account attached to the current token.
   Future<AuthAccount> fetchMe() async {
     final response = await _get(
@@ -370,7 +407,8 @@ class GatewayClient {
     String instructions = '',
     Attachment? attachment,
   }) async {
-    final path = '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
+    final path =
+        '/api/v1/scout/${Uri.encodeComponent(jobId)}/drafts/doors/'
         '${Uri.encodeComponent(doorId)}';
     if (attachment != null) {
       final request = http.MultipartRequest(

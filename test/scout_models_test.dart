@@ -67,7 +67,6 @@ Map<String, dynamic> _campaignJson() => {
           'talking_points': ['Only two mezcals on the back bar'],
         },
         'mode_paragraph': 'Wholesale placement wins on bottle-share.',
-        'template': true,
         'sources': [
           {'evidence_id': 'ev-0001', 'text': 'Whisler\'s ranks first of 25 doors'},
         ],
@@ -287,9 +286,8 @@ void main() {
     expect(menu.sources.single.title, 'https://example.com/list');
   });
 
-  test('pitch keeps the template flag and battlecard', () {
+  test('pitch keeps the sku and battlecard', () {
     final pitch = Campaign.fromJson(_campaignJson()).doors.first.pitch!;
-    expect(pitch.template, isTrue);
     expect(pitch.sku?.name, 'Espadín Joven');
     expect(pitch.battlecard?.incumbentName, 'Del Maguey');
     expect(

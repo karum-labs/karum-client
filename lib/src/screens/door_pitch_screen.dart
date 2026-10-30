@@ -102,8 +102,18 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
     if (_regenerating) return;
     final result = await _promptInstructions();
     if (result == null) return;
-    final instructions = result.$1;
-    final attachment = result.$2;
+    await _runDraft(instructions: result.$1, attachment: result.$2);
+  }
+
+  /// First draft for a door that has no pitch yet. It skips the instruction
+  /// dialog; the empty state offers that as a separate action.
+  Future<void> _generate() => _runDraft();
+
+  Future<void> _runDraft({
+    String instructions = '',
+    Attachment? attachment,
+  }) async {
+    if (_regenerating) return;
     _attachment = attachment;
     setState(() => _regenerating = true);
     try {
@@ -279,15 +289,16 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
         ..click();
       html.Url.revokeObjectUrl(url);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pitch saved as PDF.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Pitch saved as PDF.')));
     } on GatewayException catch (error) {
       if (!mounted) return;
       setState(() => _downloadError = error.message);
     } catch (error) {
       if (!mounted) return;
-      setState(() => _downloadError = 'The pitch PDF could not be saved: $error.');
+      setState(
+        () => _downloadError = 'The pitch PDF could not be saved: $error.',
+      );
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -353,7 +364,11 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
                 borderRadius: BorderRadius.circular(KarumRadius.control),
                 child: NamedIconButton(
                   label: 'Export pitch as PDF',
-                  onPressed: campaign == null || _downloading || door == null || door.pitch == null
+                  onPressed:
+                      campaign == null ||
+                          _downloading ||
+                          door == null ||
+                          door.pitch == null
                       ? null
                       : _exportPitch,
                   icon: Icons.picture_as_pdf,
@@ -396,6 +411,7 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
                     regenerating: _regenerating,
                     onCopy: () => _copyScript(door.pitch!),
                     onRegenerate: _regenerate,
+                    onGenerate: _generate,
                     onEvidence: () => showEvidenceSheet(
                       context,
                       campaign: campaign,
@@ -423,6 +439,7 @@ class _PitchBody extends StatelessWidget {
     required this.regenerating,
     required this.onCopy,
     required this.onRegenerate,
+    required this.onGenerate,
     required this.onEvidence,
     required this.onBackToBoard,
   });
@@ -432,6 +449,7 @@ class _PitchBody extends StatelessWidget {
   final bool regenerating;
   final VoidCallback onCopy;
   final VoidCallback onRegenerate;
+  final VoidCallback onGenerate;
   final VoidCallback onEvidence;
   final VoidCallback onBackToBoard;
 
@@ -463,7 +481,8 @@ class _PitchBody extends StatelessWidget {
             if (pitch == null || pitch.isEmpty)
               _MissingPitch(
                 regenerating: regenerating,
-                onRegenerate: onRegenerate,
+                onGenerate: onGenerate,
+                onGenerateWithNotes: onRegenerate,
               )
             else ...[
               _ScriptCard(
@@ -484,12 +503,12 @@ class _PitchBody extends StatelessWidget {
                 const SizedBox(height: KarumSpacing.lg),
                 _ModeParagraph(text: pitch.modeParagraph),
               ],
-              if (door.enrichment != null &&
-                  (door.enrichment!.phone.isNotEmpty ||
-                      door.enrichment!.website.isNotEmpty)) ...[
-                const SizedBox(height: KarumSpacing.lg),
-                _ContactCard(door: door, campaign: campaign),
-              ],
+            ],
+            if (door.enrichment != null &&
+                (door.enrichment!.phone.isNotEmpty ||
+                    door.enrichment!.website.isNotEmpty)) ...[
+              const SizedBox(height: KarumSpacing.lg),
+              _ContactCard(door: door, campaign: campaign),
             ],
             const SizedBox(height: KarumSpacing.lg),
             _ScoresCard(door: door),
@@ -647,13 +666,14 @@ class _ScriptCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: SectionLabel('Pitch script')),
-                if (pitch.template)
-                  const TagPill(label: 'Evidence-only template')
-                else
-                  const SourceBadge(source: 'model_inference'),
+                const SourceBadge(source: 'model_inference'),
               ],
             ),
             const SizedBox(height: KarumSpacing.md),
+            // A pitch stored before the six sections existed carries only the
+            // combined script; show it whole rather than a blank card.
+            if (!pitch.hasSections)
+              ..._section(context, 'Pitch', pitch.script),
             ..._section(context, 'Opening', pitch.opening),
             ..._section(context, 'Why this door', pitch.whyThisDoor),
             ..._section(context, 'Pitch', pitch.pitchSection),
@@ -705,13 +725,14 @@ class _ScriptCard extends StatelessWidget {
     String body,
   ) {
     if (body.trim().isEmpty) return const <Widget>[];
+    final ink = KarumPalette.of(context).ink;
     return [
       Padding(
         padding: const EdgeInsets.only(top: KarumSpacing.md),
         child: Text(
           heading,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: const Color(0xFF1F2937),
+            color: ink,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -722,7 +743,7 @@ class _ScriptCard extends StatelessWidget {
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
           fontSize: 16,
           height: 1.6,
-          color: const Color(0xFF1F2937),
+          color: ink,
         ),
       ),
     ];
@@ -824,7 +845,9 @@ class _ContactCardState extends State<_ContactCard> {
     final door = widget.door;
     final enrichment = door.enrichment;
     final phone = enrichment?.phone.isNotEmpty == true ? enrichment!.phone : '';
-    final website = enrichment?.website.isNotEmpty == true ? enrichment!.website : '';
+    final website = enrichment?.website.isNotEmpty == true
+        ? enrichment!.website
+        : '';
     final hasContact = phone.isNotEmpty || website.isNotEmpty;
     return Card(
       child: Padding(
@@ -844,7 +867,11 @@ class _ContactCardState extends State<_ContactCard> {
               if (phone.isNotEmpty) ...[
                 Row(
                   children: [
-                    const Icon(Icons.phone_rounded, size: 18, color: Color(0xFF1F2937)),
+                    Icon(
+                      Icons.phone_rounded,
+                      size: 18,
+                      color: KarumPalette.of(context).ink,
+                    ),
                     const SizedBox(width: KarumSpacing.sm),
                     Expanded(
                       child: InkWell(
@@ -863,7 +890,11 @@ class _ContactCardState extends State<_ContactCard> {
               if (website.isNotEmpty) ...[
                 Row(
                   children: [
-                    const Icon(Icons.language_rounded, size: 18, color: Color(0xFF1F2937)),
+                    Icon(
+                      Icons.language_rounded,
+                      size: 18,
+                      color: KarumPalette.of(context).ink,
+                    ),
                     const SizedBox(width: KarumSpacing.sm),
                     Expanded(
                       child: InkWell(
@@ -890,16 +921,14 @@ class _ContactCardState extends State<_ContactCard> {
             ] else ...[
               Text(
                 'No phone number or website is on file for this venue.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.mute),
               ),
               const SizedBox(height: KarumSpacing.md),
               Text(
                 'Export the pitch from the header to share it outside Karum.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: palette.mute,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: palette.mute),
               ),
             ],
           ],
@@ -962,10 +991,10 @@ class _ContactCardState extends State<_ContactCard> {
           FocusRing(
             borderRadius: BorderRadius.circular(KarumRadius.control),
             child: FilledButton(
-              onPressed: () => Navigator.pop(
-                context,
-                (subjectController.text, bodyController.text),
-              ),
+              onPressed: () => Navigator.pop(context, (
+                subjectController.text,
+                bodyController.text,
+              )),
               child: const Text('Send'),
             ),
           ),
@@ -1338,48 +1367,82 @@ class _MenuCard extends StatelessWidget {
   }
 }
 
+/// Empty state for a door whose pitch has not been generated yet.
 class _MissingPitch extends StatelessWidget {
-  const _MissingPitch({required this.regenerating, required this.onRegenerate});
+  const _MissingPitch({
+    required this.regenerating,
+    required this.onGenerate,
+    required this.onGenerateWithNotes,
+  });
 
   final bool regenerating;
-  final VoidCallback onRegenerate;
+  final VoidCallback onGenerate;
+  final VoidCallback onGenerateWithNotes;
 
   @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.all(KarumSpacing.xl),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(KarumRadius.card),
-        border: Border.all(color: palette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'No pitch was stored for this door.',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: KarumSpacing.xs),
-          Text(
-            'The gateway can regenerate it on demand. If the AI is unavailable '
-            'it returns an evidence-only template and labels it.',
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: palette.mute),
-          ),
-          const SizedBox(height: KarumSpacing.lg),
-          FilledButton.icon(
-            onPressed: regenerating ? null : onRegenerate,
-            icon: regenerating
-                ? const SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome_outlined, size: 18),
-            label: Text(regenerating ? 'Regenerating…' : 'Generate the pitch'),
-          ),
-        ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(KarumSpacing.xl2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(child: SectionLabel('Pitch script')),
+                const TagPill(label: 'Not generated'),
+              ],
+            ),
+            const SizedBox(height: KarumSpacing.lg),
+            Icon(Icons.auto_awesome_outlined, size: 28, color: palette.brand),
+            const SizedBox(height: KarumSpacing.md),
+            Text(
+              'No pitch for this door yet',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: KarumSpacing.xs),
+            Text(
+              'Karum writes the pitch from this door\'s taste match, shelf read '
+              'and your brand brief, and cites the evidence behind every '
+              'number. Generate it when you are ready to call.',
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: palette.mute),
+            ),
+            const SizedBox(height: KarumSpacing.lg),
+            Wrap(
+              spacing: KarumSpacing.sm,
+              runSpacing: KarumSpacing.sm,
+              children: [
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: FilledButton.icon(
+                    key: const Key('generate-pitch'),
+                    onPressed: regenerating ? null : onGenerate,
+                    icon: regenerating
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome_outlined, size: 18),
+                    label: Text(
+                      regenerating ? 'Generating…' : 'Generate pitch',
+                    ),
+                  ),
+                ),
+                FocusRing(
+                  borderRadius: BorderRadius.circular(KarumRadius.control),
+                  child: OutlinedButton.icon(
+                    onPressed: regenerating ? null : onGenerateWithNotes,
+                    icon: const Icon(Icons.edit_note_rounded, size: 18),
+                    label: const Text('Add instructions'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
