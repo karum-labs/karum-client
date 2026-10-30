@@ -53,7 +53,13 @@ Map<String, dynamic> _campaignJson() => {
         'attribution': 'Map data © Google',
       },
       'pitch': {
-        'script': 'Whisler\'s ranks first of 25 (ev-0001).',
+        'script': 'Whisler\'s ranks first of 25.\nGood morning.',
+        'opening': 'Good morning.',
+        'why_this_door': "Whisler's ranks first of 25.",
+        'pitch': 'Take the Espadín Joven on a six-bottle trial.',
+        'product_to_lead': 'Espadín Joven',
+        'ask': 'Will you stock it?',
+        'close': 'Thanks for your time.',
         'sku': {'id': 'sk-espadin', 'name': 'Espadín Joven'},
         'battlecard': {
           'headline': 'Mezcal shelf is undifferentiated',
@@ -62,6 +68,9 @@ Map<String, dynamic> _campaignJson() => {
         },
         'mode_paragraph': 'Wholesale placement wins on bottle-share.',
         'template': true,
+        'sources': [
+          {'evidence_id': 'ev-0001', 'text': 'Whisler\'s ranks first of 25 doors'},
+        ],
       },
       'menu': {
         'summary': 'Two mezcal competitors on the list.',
@@ -288,6 +297,35 @@ void main() {
       'Only two mezcals on the back bar',
     );
     expect(pitch.isEmpty, isFalse);
+  });
+
+  test('pitch sections and sources parse from JSON', () {
+    final pitch = Campaign.fromJson(_campaignJson()).doors.first.pitch!;
+    expect(pitch.opening, 'Good morning.');
+    expect(pitch.whyThisDoor, "Whisler's ranks first of 25.");
+    expect(pitch.pitchSection, 'Take the Espadín Joven on a six-bottle trial.');
+    expect(pitch.productToLead, 'Espadín Joven');
+    expect(pitch.ask, 'Will you stock it?');
+    expect(pitch.close, 'Thanks for your time.');
+    expect(
+      pitch.sources,
+      [Citation(evidenceId: 'ev-0001', text: "Whisler's ranks first of 25 doors")],
+    );
+  });
+
+  test('pitch prose carries no inline citation tokens', () {
+    final pitch = Campaign.fromJson(_campaignJson()).doors.first.pitch!;
+    for (final text in [
+      pitch.script,
+      pitch.opening,
+      pitch.whyThisDoor,
+      pitch.pitchSection,
+      pitch.productToLead,
+      pitch.ask,
+      pitch.close,
+    ]) {
+      expect(RegExp(r'ev-\d+').hasMatch(text), isFalse, reason: text);
+    }
   });
 
   test('skip reasons map to plain English', () {

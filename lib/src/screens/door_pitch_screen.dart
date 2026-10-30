@@ -4,6 +4,7 @@ import 'dart:html' as html;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../api/gateway_client.dart';
 import '../api/scout_models.dart';
@@ -129,10 +130,10 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
   /// A bubble anchored over the pitch page with an instruction field for the
   /// redraft (PLAN.md §65). Returns (instructions, attachment), or null on
   /// cancel.
-  Future<(String?, Attachment?)?> _promptInstructions() async {
+  Future<(String, Attachment?)?> _promptInstructions() async {
     final controller = TextEditingController();
     Attachment? attachment;
-    return showDialog<(String?, Attachment?)?>(
+    return showDialog<(String, Attachment?)?>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Regenerate pitch'),
@@ -270,7 +271,11 @@ class _DoorPitchScreenState extends State<DoorPitchScreen> {
       final blob = html.Blob([bytes]);
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", "pitch-${door.name.replaceAll(' ', '-')}.pdf")
+        ..setAttribute(
+          "download",
+          "pitch-${door.name.replaceAll(' ', '-')}-"
+              "${DateTime.now().toUtc().toIso8601String().substring(0, 10)}.pdf",
+        )
         ..click();
       html.Url.revokeObjectUrl(url);
       if (!mounted) return;
@@ -794,15 +799,29 @@ class _SourcesCard extends StatelessWidget {
   }
 }
 
-class _ContactCard extends StatelessWidget {
+class _ContactCard extends StatefulWidget {
   const _ContactCard({required this.door, required this.campaign});
 
   final Door door;
   final Campaign campaign;
 
   @override
+  State<_ContactCard> createState() => _ContactCardState();
+}
+
+class _ContactCardState extends State<_ContactCard> {
+  late GatewayClient _client;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _client = AppScope.maybeOf(context)?.client ?? GatewayClient();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = KarumPalette.of(context);
+    final door = widget.door;
     final enrichment = door.enrichment;
     final phone = enrichment?.phone.isNotEmpty == true ? enrichment!.phone : '';
     final website = enrichment?.website.isNotEmpty == true ? enrichment!.website : '';
@@ -863,7 +882,7 @@ class _ContactCard extends StatelessWidget {
               FocusRing(
                 borderRadius: BorderRadius.circular(KarumRadius.control),
                 child: OutlinedButton.icon(
-                  onPressed: () => _sendPitch(context),
+                  onPressed: _sendPitch,
                   icon: const Icon(Icons.email_outlined, size: 18),
                   label: const Text('Send pitch by email'),
                 ),
@@ -889,35 +908,78 @@ class _ContactCard extends StatelessWidget {
     );
   }
 
-  Future<void> _sendPitch(BuildContext context) async {
+  Future<void> _sendPitch() async {
     // Text sending is disabled until the compliance decision is recorded
     // (PLAN.md §67). Email goes through the gateway, not the browser.
     if (!mounted) return;
-    final ok = await showDialog<bool>(
+    final subjectController = TextEditingController(
+      text: 'Karum pitch — ${widget.door.name}',
+    );
+    final bodyController = TextEditingController();
+    final result = await showDialog<(String, String)?>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Send pitch by email'),
-        content: const Text(
-          'Send this door\'s pitch as an email to the venue? The message '
-          'body and the pitch PDF are sent through Karum\'s gateway; the '
-          'message body is never logged on the server.',
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The pitch PDF is attached. Edit the subject and body before '
+                'sending. Everything leaves through Karum\'s gateway; the '
+                'message body is never logged on the server.',
+              ),
+              const SizedBox(height: KarumSpacing.md),
+              TextField(
+                controller: subjectController,
+                decoration: const InputDecoration(
+                  labelText: 'Subject',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: KarumSpacing.md),
+              TextField(
+                controller: bodyController,
+                minLines: 4,
+                maxLines: 8,
+                decoration: const InputDecoration(
+                  labelText: 'Body',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FocusRing(
             borderRadius: BorderRadius.circular(KarumRadius.control),
             child: FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(
+                context,
+                (subjectController.text, bodyController.text),
+              ),
               child: const Text('Send'),
             ),
           ),
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+    if (result == null || !mounted) return;
     try {
-      await _client.sendContact(widget.jobId, door.id,
-          recipient: '', confirm: true);
+      await _client.sendContact(
+        widget.campaign.jobId,
+        widget.door.id,
+        recipient: '',
+        confirm: true,
+        subject: result.$1,
+        body: result.$2,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email sending is not yet configured.')),
@@ -927,6 +989,12 @@ class _ContactCard extends StatelessWidget {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  static String _host(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return url;
+    return uri.host.replaceFirst('www.', '');
   }
 }
 

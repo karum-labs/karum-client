@@ -108,6 +108,11 @@ button, the trace panel, the map's list toggle, the board's tabs, the door card'
 **The door card** — **Pitch & route**, Evidence, regenerate. Tab to **Pitch & route**
 and press Enter: the door card opens.
 
+**The pitch screen** — the sections are announced in reading order: opening,
+why this door, pitch, product to lead, ask, close, then the sources list.
+Prose never carries inline citation ids; citations render as the source list at
+the bottom, so a screen reader hears clean sentences followed by their sources.
+
 The map is deliberately not in that order. It draws its own focus scope, and a focus
 that lands inside it is trapped: Tab walks the map and never reaches the board. The
 map is excluded from the keyboard for that reason, and the map's own toggle — Map or
