@@ -915,7 +915,9 @@ class _ContactCardState extends State<_ContactCard> {
     final subjectController = TextEditingController(
       text: 'Karum pitch — ${widget.door.name}',
     );
-    final bodyController = TextEditingController();
+    final bodyController = TextEditingController(
+      text: widget.door.pitch?.script ?? '',
+    );
     final result = await showDialog<(String, String)?>(
       context: context,
       builder: (context) => AlertDialog(

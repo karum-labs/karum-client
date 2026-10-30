@@ -453,7 +453,7 @@ class GatewayClient {
           '${Uri.encodeComponent(doorId)}/contact',
       body: {
         'recipient': recipient,
-        'confirm': confirm.toString(),
+        'confirm': confirm,
         'subject': subject,
         'body': body,
       },
