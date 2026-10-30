@@ -98,7 +98,19 @@ Trust is the whole point of a tool that tells a brand where to spend its money, 
 
 **Qloo Taste Graph** for cultural and demographic insight · **Google Vertex AI (Gemini) with Google Search** for live menu checks and pitch writing · **Google Maps** for locations and routing. The platform is open source under the MIT License, built by two people across a connected set of services.
 
-This repository is the **Karum web app** — the screens judges and users see. The rest of the platform lives in [`karum-infra`](https://github.com/karum-labs/karum-infra), which also carries the setup and run instructions for developers.
+This repository is the **Karum web app** — the screens judges and users see.
+
+## The Karum platform
+
+Karum is made of five repositories. Each one does one job:
+
+| Repository | What it does |
+| --- | --- |
+| [**karum-client**](https://github.com/karum-labs/karum-client) | This repo. The web app that judges and users see and use. |
+| [**karum-server**](https://github.com/karum-labs/karum-server) | The coordinator that takes each request, runs the steps in order, and returns the results. |
+| [**karum-service-taste**](https://github.com/karum-labs/karum-service-taste) | The taste engine. Uses Qloo to rank venues by how closely their customers match a brand. |
+| [**karum-service-ai**](https://github.com/karum-labs/karum-service-ai) | The AI engine. Uses Google's Gemini and Search to check live menus and write the pitches. |
+| [**karum-infra**](https://github.com/karum-labs/karum-infra) | The shared foundation. Holds the agreed data formats, the setup and run instructions, and the deployment scripts. |
 
 ## Licence
 
